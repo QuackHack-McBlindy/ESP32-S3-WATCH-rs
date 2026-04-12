@@ -2,8 +2,8 @@
 
 [![Sponsors](https://img.shields.io/github/sponsors/QuackHack-McBlindy?logo=githubsponsors&label=Sponsor&style=flat&labelColor=ff1493&logoColor=fff&color=rgba(234,74,170,0.5) "")](https://github.com/sponsors/QuackHack-McBlindy) [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Sponsor?style=flat&logo=buymeacoffee&logoColor=fff&labelColor=ff1493&color=ff1493)](https://buymeacoffee.com/quackhackmcblindy)
 
+<br>
 
-<img src="./resource/device-map.png" width="200px"/>
 
 Bare Metal *(no_std)* **ESP32-S3-BOX-3** firmware written in Rust (no `esp-idf`).   
 Designed to be used as a voice assistant and/or smart speaker.   
