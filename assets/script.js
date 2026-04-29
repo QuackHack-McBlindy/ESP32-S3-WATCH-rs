@@ -9,6 +9,20 @@ const API = {
   record: (val = 'start') => `/api/voice/state/${val}`,
   update: '/api/update',
   media: (action) => `/api/media/${action}`
+
+  
+  sensorBattery:      '/api/sensor/battery_voltage',
+  sensorBatteryPct:   '/api/sensor/battery',
+  sensorTemperature:  '/api/sensor/temperature',
+  sensorHumidity:     '/api/sensor/humidity',
+  sensorRssi:         '/api/sensor/rssi',
+  sensorOccupancy:    '/api/sensor/occupancy',
+  sensorIr:           '/api/sensor/ir',
+  sensorIp:           '/api/sensor/ip',
+  sensorSpk:          '/api/sensor/speaker',
+  sensorMic:          '/api/sensor/mic',
+  sensorMedia:        '/api/sensor/media',
+  sensorTime:         '/api/sensor/time'    
 };
 
 async function callApi(url, method = 'GET') {
@@ -92,24 +106,29 @@ function updateTime() {
 setInterval(updateTime, 1000);
 updateTime();
 
-function randomizeTelemetry() {
-  const battVoltage = document.getElementById('battVoltage');
-  if (battVoltage) battVoltage.innerText = (3.7 + Math.random() * 0.5).toFixed(2) + ' V';
-  const battPercent = document.getElementById('battPercent');
-  if (battPercent) battPercent.innerText = Math.floor(40 + Math.random() * 60) + ' %';
-  const temperature = document.getElementById('temperature');
-  if (temperature) temperature.innerText = (18 + Math.random() * 12).toFixed(1) + ' °C';
-  const humidity = document.getElementById('humidity');
-  if (humidity) humidity.innerText = Math.floor(30 + Math.random() * 45) + ' %';
-  const rssi = document.getElementById('rssi');
-  if (rssi) rssi.innerText = -Math.floor(30 + Math.random() * 55) + ' dBm';
-  const occupancy = document.getElementById('occupancy');
-  if (occupancy) occupancy.innerHTML = Math.random() > 0.8 ? '👤 DETECTED' : '🌿 CLEAR';
-  const irStatus = document.getElementById('irStatus');
-  if (irStatus) {
-    if (Math.random() < 0.2) irStatus.innerText = '0x' + Math.floor(Math.random()*65535).toString(16);
-    else irStatus.innerText = '—';
+
+async function updateSensor(endpoint, elementId, formatter = (v) => v) {
+  const text = await callApi(endpoint);
+  if (text === null || text === undefined) return;
+
+  const el = document.getElementById(elementId);
+  if (el) {
+    el.innerText = formatter(text.trim());
   }
 }
-setInterval(randomizeTelemetry, 7000);
-randomizeTelemetry();
+
+async function updateTelemetry() {
+  await updateSensor(API.sensorBattery,      'battVoltage', v => parseFloat(v).toFixed(2) + ' V');
+  await updateSensor(API.sensorBatteryPct,   'battPercent', v => v + ' %');
+  await updateSensor(API.sensorTemperature,  'temperature', v => parseFloat(v).toFixed(1) + ' °C');
+  await updateSensor(API.sensorHumidity,     'humidity',    v => v + ' %');
+  await updateSensor(API.sensorRssi,         'rssi',        v => v + ' dBm');
+  await updateSensor(API.sensorOccupancy,    'occupancy',   v => v === '1' ? '👤 DETECTED' : '🌿 CLEAR');
+  await updateSensor(API.sensorIr,           'irStatus',    v => {
+    const code = parseInt(v, 10);
+    return (code === 0) ? '—' : '0x' + code.toString(16).toUpperCase();
+  });
+}
+
+updateTelemetry();
+setInterval(updateTelemetry, 30000);

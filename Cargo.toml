@@ -1,0 +1,128 @@
+[package]
+name = "ESP32-S3-WATCH"
+version = "0.1.0"
+description = "Bare Metal (no_std + alloc) firmware for `WaveShare ESP32-S3-Touch-AMOLED-2.06` using `esp-hal` as Hardware Abstraction Layer and `embassy` as Async runtime. Firmware is mainly focused on accessibility using voice assistance."
+edition = "2024"
+
+rust-version = "1.88"
+license = "MIT"
+repository = "https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs"
+authors = ["QuackHack-McBlindy"]
+readme = "README.md"
+keywords = [ "no-std", "esp-hal", "embedded", "i2s", "audio", "esp32s3", "embassy", "esp32"]
+categories = [
+    "embedded",
+    "no-std",
+    "development-tools",
+    "network-programming"
+]
+
+
+
+[dependencies]
+# QUACKHACK-MCBLINDY CRATES
+# YO-ESP - BIDIRECTIONAL I2S CONNECTION
+yo-esp = "0.1.3"
+# ES7210/ES8311 AUDIO CODECS
+es7210 = "0.1.0"
+es8311 = "0.1.0"
+# TINYAPI - SETUP GET API ROUTES 
+tinyapi = "0.1.7"
+# BARELY-FUZZY - LEVENSTEIN + TRIGRAM
+#barely-fuzzy = { path = "./vendor/barely-fuzzy", default-features = false, features = ["alloc"] }
+
+# ESP ECOSYSTEM
+esp-hal = { version = "1.1.0-rc.0", features = ["defmt", "esp32s3", "unstable"] }
+esp-rtos = { version = "0.3.0", features = [
+  "defmt",
+  "embassy",
+  "esp-alloc",
+  "esp-radio",
+  "esp32s3",
+] }
+esp-alloc = { version = "0.10.0", features = ["defmt"] } # Mem
+esp-storage  = { version = "0.4.0", features = ["esp32s3"] } 
+# ESPRESSIF BOOTLOADER
+esp-bootloader-esp-idf = { version = "0.5.0", features = ["defmt", "esp32s3"] }
+
+
+# DISPLAY
+
+
+# BLUETOOTH
+bt-hci = "0.6.0"
+
+# EMBEDDED HAL
+embedded-io = { version = "0.7.1", features = ["defmt"] }
+embedded-io-async = { version = "0.7.0", features = ["defmt"] }
+embedded-hal = "1.0"
+embedded-hal-bus = "0.3.0"
+embedded-storage = "0.3.1"
+
+# ASYNC RUNTIME
+embassy-executor = { version = "0.10.0", features = ["defmt"] }
+embassy-time = { version = "0.5.0", features = ["defmt"] }
+embassy-sync = { version = "0.8.0", features = ["defmt"] }
+embassy-futures = "0.1"
+
+# WIFI & NETWORK STACK
+esp-radio = { version = "0.18.0", features = [
+  "ble",
+  "coex",
+  "defmt",
+  "esp-alloc",
+  "esp32s3",
+#  "smoltcp",
+  "unstable",
+  "wifi",
+] }
+embassy-net = { version = "0.9.0", features = [
+  "defmt",
+  "dns",
+  "dhcpv4",
+  "medium-ethernet",
+  "tcp",
+  "udp",
+] }
+smoltcp = { version = "0.12.0", default-features = false, features = [
+  "defmt",
+  "medium-ethernet",
+  "multicast",
+  "proto-dhcpv4",
+  "proto-dns",
+  "proto-ipv4",
+  "socket-dns",
+  "socket-icmp",
+  "socket-raw",
+  "socket-tcp",
+  "socket-udp",
+] }
+trouble-host = { version = "0.5.0", features = ["gatt"] }
+# Seed
+rand_core = "0.6"
+
+# Misc/logging
+critical-section = "1.2.0"
+static_cell = "2.1.1"
+defmt = "1.0.1"
+defmt-rtt = "1.1.0"
+esp-println = { version = "0.16.1", features = ["defmt-espflash", "esp32s3"] }
+heapless = "0.8"
+
+
+# Math
+micromath = "2.1.0"
+libm = "0.2"
+
+
+[profile.dev]
+opt-level = "s"
+
+[profile.release]
+codegen-units = 1
+debug = 2
+debug-assertions = false
+incremental = false
+lto = 'fat'
+opt-level = 's'
+overflow-checks = false

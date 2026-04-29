@@ -1,0 +1,21 @@
+services:
+  watch:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/app
+    image: esp-dev:esp32s3box3
+    # use: `docker exec -it esp32s3-watch /bin/bash`
+    # to jump into container for development
+    container_name: esp32s3-watch
+    devices: # enter your serial port
+      - "/dev/ttyACM0:/dev/ttyACM0"
+    environment:
+      - CARGO_UNSTABLE_BUILD_STD=core
+    env_file:
+      - ./.env
+    stdin_open: true
+    tty: true
+    #command: bash -c "source /root/export-esp.sh && cargo clean && cargo run --release"
+
