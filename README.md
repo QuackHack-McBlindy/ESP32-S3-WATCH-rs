@@ -6,7 +6,7 @@
 ## **ESP32-S3-WATCH**
 
 > [!NOTE]
-> **Personal project!**
+> **Personal project!**  
 > **🧑‍🦯 As I am blind this firmware is mostly focused on accessibility of the voice assistant functionality of the watch.**  
 > **It will have touch and a graphical user interface -- but it will be BIG.**  
 <br>
