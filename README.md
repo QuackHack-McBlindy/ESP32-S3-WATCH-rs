@@ -6,8 +6,8 @@
 ## **ESP32-S3-WATCH**
 
 > [!NOTE]
-> **Personal project!**  
-> **🧑‍🦯 As I am blind this firmware is mostly focused on accessibility of the voice assistant functionality of the watch.**  
+> **🧑‍🦯 Personal project!**  
+> **As I am blind this firmware is mostly focused on accessibility of the voice assistant functionality of the watch.**  
 > **It will have touch and a graphical user interface -- but it will be BIG.**  
 <br>
 
@@ -18,10 +18,6 @@ Its up to [yo](https://github.com/QuackHack-McBlindy/yo) to write your own voice
 as a reference: I have **57** [yo](https://github.com/QuackHack-McBlindy/dotfiles) scripts meaning my watch has **272684913** phrases available as voice commands.  
 
     
-> [!CAUTION]
-> __Project is under active development!__ <br>
-> **Breaking changes will be frequent.**  
-<br>
 
 
 ## **Table Of Contents**
@@ -47,13 +43,17 @@ as a reference: I have **57** [yo](https://github.com/QuackHack-McBlindy/dotfile
 - [Sponsor](#sponsor)
 - [License](#license)
 
-<br>
+<br><br>  
+
 
 ## **Overview**
 
 `ESP32-S3-WATCH-rs` is a `no_std` Rust firmware for the ESP32-S3 based smartwatch. The primary goal is to create a fully voice‑controlled assistant that is highly accessible for blind and visually impaired users. All interactions can be performed via voice, and the graphical interface is designed with large, high‑contrast elements.  
 
 The watch streams audio to a companion backend service called [`yo`](https://github.com/QuackHack-McBlindy/yo), which handles wake word detection, speech‑to‑text, intent recognition and execution, and text‑to‑speech synthesis. The watch itself streams microphone audio, serves TCP server for audio streaming to the speaker, manages notifications, plays media, and serves a web frontend for configuration and status which also can be used as a GET API.  
+
+<br><br>
+
 
 ## **Roadmap**
 
@@ -89,12 +89,16 @@ This is where your `ESP32-S3-BOX-3` microphone audio will be streamed.
   - Control any device option with your voice!
 
 
+<br><br>
+
 
 ## **Demo**
 
 A demo video/pictures will be added soon.    
 
 [Demo video coming soon]
+
+<br><br>
 
 
 ## **Installation**
@@ -172,6 +176,19 @@ $ docker compose up
 
 ### **Frontend**  
 
+If you prefer to handle your media manually in the web browser - good news!  
+Your `ESP32S3` is now serving a fully featured media player that can cast to your TV's and has built-in transcoding.  
+You can go ahead and visit your device at:  
+
+`http://<ESP_IP>:80/`  
+
+
+https://github.com/user-attachments/assets/bdbd0250-b683-4ffa-b8cb-817d0589df1a 
+
+https://github.com/user-attachments/assets/91760f4f-0f31-439e-bc6b-8d2960c62cd8
+
+
+<br><br>
 
 
 ### **API**    
@@ -234,6 +251,8 @@ curl http://<ESP_IP>:80/api/settings/display/brightness/75
 > **You can use the provided `scripts/play-esp.sh` helper script to stream audioo to the device speaker.**
 <br>
 
+<br><br>
+
  
 ## **Voice Assistant**
 
@@ -243,6 +262,9 @@ curl http://<ESP_IP>:80/api/settings/display/brightness/75
 *Coming soon..*  
 
 **Meanwhile:** [yo](https://github.com/QuackHack-Mcblindy/yo)  
+
+<br><br>
+
 
 ### **My Voice Commands**
 
@@ -441,6 +463,7 @@ I2S is used as single peripheral.
 **I2S TX** is configured as Master, while **I2S RX** is set to slave mode.  
 Audio codecs (ES7210/ES8311) are configured via I2C, and are used as slaves.   
 
+<br><br>
 
 #### **I2C**
 
@@ -461,10 +484,16 @@ Audio codecs (ES7210/ES8311) are configured via I2C, and are used as slaves.
 0x51 === PCF85063A (RTC)  
 0x6B	 === QMI8658 (6-axis IMU)   
 
+<br><br>
 
 ## **Graphical User Interface**
 
+<br><br>
+
+
 ## **Applications**  
+
+<br><br>
 
 
 ## **Power Management & Optimizations**  
@@ -495,3 +524,4 @@ Audio codecs (ES7210/ES8311) are configured via I2C, and are used as slaves.
 
 This project is licensed under the terms of the MIT license.  
 See the `LICENSE` file in the repository for full details.  
+
