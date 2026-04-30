@@ -26,6 +26,8 @@ yo-esp = "0.1.3"
 # ES7210/ES8311 AUDIO CODECS
 es7210 = "0.1.0"
 es8311 = "0.1.0"
+# AXP2101 - POWER MANAGEMENT UNIT
+#axp2101 = { path = "vendor/axp2101" }
 # TINYAPI - SETUP GET API ROUTES 
 tinyapi = "0.1.7"
 # BARELY-FUZZY - LEVENSTEIN + TRIGRAM
@@ -45,12 +47,18 @@ esp-storage  = { version = "0.4.0", features = ["esp32s3"] }
 # ESPRESSIF BOOTLOADER
 esp-bootloader-esp-idf = { version = "0.5.0", features = ["defmt", "esp32s3"] }
 
+# Power Manaagement
+axp2101-embedded = "0.3"
 
-# DISPLAY
-
+# Graphics
+embedded-graphics = "0.8"
+embedded-graphics-core = "0.4"
 
 # BLUETOOTH
 bt-hci = "0.6.0"
+# SD CARD
+embedded-sdmmc = "0.8"
+
 
 # EMBEDDED HAL
 embedded-io = { version = "0.7.1", features = ["defmt"] }
@@ -58,6 +66,7 @@ embedded-io-async = { version = "0.7.0", features = ["defmt"] }
 embedded-hal = "1.0"
 embedded-hal-bus = "0.3.0"
 embedded-storage = "0.3.1"
+
 
 # ASYNC RUNTIME
 embassy-executor = { version = "0.10.0", features = ["defmt"] }

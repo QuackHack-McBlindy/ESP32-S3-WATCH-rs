@@ -15,7 +15,7 @@ use embassy_net::{
     StackResources,
     dns::DnsQueryType,
 };
-use embassy_time::{Duration, Timer};
+
 use esp_hal::peripherals::WIFI;
 use esp_hal::rng::Rng;
 use esp_radio::wifi::{
@@ -28,24 +28,16 @@ use esp_radio::wifi::{
 };
 
 use crate::alloc::string::ToString;
-use crate::{
-    store,
-    CURRENT_IP,
-    PASSWORD,
-    SSID,
-    BACKEND_TCP_HOST,
-    mk_static,
-    spawn,                // <-- THE SPAWN! MACRO
-};
-
+use crate::{store, load, mk_static, spawn};
+use crate::state::{CURRENT_IP, PASSWORD, SSID, BACKEND_TCP_HOST}; 
 pub static CURRENT_RSSI: AtomicI32 = AtomicI32::new(0);
 
 // WIFI CONNECTION TASK
 #[embassy_executor::task]
 pub async fn connection(mut controller: WifiController<'static>) {
     let station_config = StationConfig::default()
-        .with_ssid(SSID)
-        .with_password(PASSWORD.to_string());
+        .with_ssid(crate::state::SSID)
+        .with_password(crate::state::PASSWORD.to_string());
 
     let wifi_config = Config::Station(station_config);
     controller.set_config(&wifi_config).unwrap();
@@ -63,12 +55,12 @@ pub async fn connection(mut controller: WifiController<'static>) {
                 // RSSI UPDATE LOOP
                 loop {
                     if let Ok(rssi) = controller.rssi() {
-                        CURRENT_RSSI.store(rssi, Ordering::Relaxed);
+                        store!(CURRENT_RSSI, rssi);
                     }
 
                     match select(
                         controller.wait_for_disconnect_async(),
-                        Timer::after(Duration::from_millis(6000)),
+                        embassy_time::Timer::after(embassy_time::Duration::from_millis(6000)),
                     )
                     .await
                     {
@@ -90,7 +82,7 @@ pub async fn connection(mut controller: WifiController<'static>) {
             }
             Err(e) => {
                 info!("WiFi - ❌ CONNECTION FAILED: {:?}", e);
-                Timer::after(Duration::from_millis(5000)).await;
+                embassy_time::Timer::after(embassy_time::Duration::from_millis(5000)).await;
             }
         }
     }
@@ -146,7 +138,7 @@ pub async fn init(
         if let Some(config) = stack.config_v4() {
             break config.address;
         }
-        Timer::after(Duration::from_millis(500)).await;
+        embassy_time::Timer::after(embassy_time::Duration::from_millis(500)).await;
     };
     let ip_raw = u32::from(ip.address());
     store!(CURRENT_IP, ip_raw);
@@ -161,7 +153,7 @@ pub async fn init(
             }
             Err(e) => {
                 info!("DNS LOOKUP ERROR FOR {}: {}", BACKEND_TCP_HOST, e);
-                Timer::after(Duration::from_secs(5)).await;
+                embassy_time::Timer::after(embassy_time::Duration::from_secs(5)).await;
             }
         }
     };
@@ -171,5 +163,5 @@ pub async fn init(
 
 // HELPER SLEEP
 pub async fn sleep(millis: u64) {
-    Timer::after(Duration::from_millis(millis)).await;
+    embassy_time::Timer::after(embassy_time::Duration::from_millis(millis)).await;
 }

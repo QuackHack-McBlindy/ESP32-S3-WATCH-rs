@@ -1,0 +1,15 @@
+[package]
+name = "es8311"
+version = "0.1.0"
+
+description = "no_std driver for the Everest Semi ES8311 low-power audio codec"
+authors = ["QuackHack-McBlindy"]
+license = "MIT"
+repository = "https://github.com/QuackHack-McBlindy/es8311"
+readme = "README.md"
+keywords = ["esp-hal", "embedded", "esp32"]
+categories = ["development-tools::embedded"]
+edition = "2024"
+
+[dependencies]
+embedded-hal = "1.0"

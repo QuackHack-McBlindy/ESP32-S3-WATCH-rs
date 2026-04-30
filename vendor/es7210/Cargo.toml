@@ -1,0 +1,14 @@
+[package]
+name = "es7210"
+version = "0.1.0"
+authors = ["QuackHack-McBlindy"]
+license = "MIT"
+description = "no_std driver for the Everest Semi ES7210 quad-channel audio ADC"
+repository = "https://github.com/QuackHack-McBlindy/es7210"
+readme = "README.md"
+keywords = ["esp-hal", "embedded", "esp32"]
+categories = ["development-tools::embedded"]
+edition = "2024"
+
+[dependencies]
+embedded-hal = "1.0"

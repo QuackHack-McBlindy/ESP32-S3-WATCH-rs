@@ -4,23 +4,23 @@
 // ++ SERVE WEBSERVER AT `http://0.0.0.0:80`
 // EXAMPLE USAGE: (SET DISPLAY BRIGHTNESS TO `70%` USING `curl`) 
 // `curl 192.168.1.11:80/api/settings/display/brightness/70`
+
 use tinyapi::{log, register_route, Request, Response};
+use crate::{init_bool, store, load};
 use defmt::info;
 use alloc::format;
 use alloc::string::String;
 use alloc::vec;
 use embassy_net::Ipv4Address;
 
-use crate::components::aht20::HUMIDITY;
-use crate::components::aht20::TEMPERATURE;
-use crate::components::presence::PRESENCE;
-use crate::{BATTERY_PERCENT, BATTERY_VOLTAGE, RSSI, CURRENT_IP, MIC_VOLUME, SPEAKER_VOLUME, MIC_MUTED, SPEAKER_MUTED, BACKLIGHT_PERCENT, DISPLAY_STATE, FW_VERSION};
-use crate::{init_bool, store, load};
 
-// INIT ATOMIC DEFAULT VALUES
-init_bool!(POWER_STATE, true);
-init_bool!(MIC_ACTIVE, true);
-init_bool!(PAUSE_FLAG, true);
+use crate::state::{
+    BATTERY_PERCENT, BATTERY_VOLTAGE,
+    RSSI, CURRENT_IP,
+    MIC_VOLUME, SPEAKER_VOLUME, MIC_MUTED, SPEAKER_MUTED,
+    DISPLAY_STATE, DISPLAY_BRIGHTNESS, FW_VERSION
+};
+
 
 // GET /API - RETURN LIST OF ENDPOINTS 
 fn api_list_handler(_req: Request<'_>) -> Response {
@@ -56,29 +56,29 @@ fn ota_handler(_req: Request<'_>) -> Response {
 }
 
 // GET /API/SETTINGS/DISPLAY/BRIGHTNESS/{val}
-pub fn brightness_handler(req: Request<'_>) -> Response {
-    let value = req.param("value").unwrap_or("?");
-    info!("Setting brightness to {}", value);
-    if let Ok(percent) = value.parse::<u8>() {
-        let percent = percent.clamp(0, 80);
-        store!(BACKLIGHT_PERCENT, percent);
-    }
-    let msg = format!("Brightness set to {}", value);
-    Response::text(&msg)
-}
+//pub fn brightness_handler(req: Request<'_>) -> Response {
+//    let value = req.param("value").unwrap_or("?");
+//    info!("Setting brightness to {}", value);
+//    if let Ok(percent) = value.parse::<u8>() {
+//        let percent = percent.clamp(0, 80);
+//        store!(BACKLIGHT_PERCENT, percent);
+//    }
+//    let msg = format!("Brightness set to {}", value);
+//    Response::text(&msg)
+//}
 
 // GET /API/SETTINGS
 fn power_state_handler(req: Request<'_>) -> Response {
     let value = req.param("value").unwrap_or("toggle");
     match value {
-        "on" => store!(POWER_STATE, true),
-        "off" => store!(POWER_STATE, false),
+        "on" => store!(crate::state::POWER_STATE, true),
+        "off" => store!(crate::state::POWER_STATE, false),
         _ => {
-            let new = !load!(POWER_STATE);
-            store!(POWER_STATE, new);
+            let new = !load!(crate::state::POWER_STATE);
+            store!(crate::state::POWER_STATE, new);
         }
     }
-    let state = load!(POWER_STATE);
+    let state = load!(crate::state::POWER_STATE);
     info!("Power state -> {}", if state { "ON" } else { "OFF" });
     Response::text(if state { "ON" } else { "OFF" })
 }
@@ -160,12 +160,12 @@ fn speaker_mute_handler(req: Request<'_>) -> Response {
     Response::text(if muted { "muted" } else { "unmuted" })
 }
 
-fn media_handler(req: Request<'_>) -> Response {
-    let action = req.param("action").unwrap_or("none");
-    info!("Media action: {}", action);
-    let status = crate::apps::media::handle_action(action);
-    Response::text(status)
-}
+//fn media_handler(req: Request<'_>) -> Response {
+//    let action = req.param("action").unwrap_or("none");
+//    info!("Media action: {}", action);
+//    let status = crate::apps::media::handle_action(action);
+//    Response::text(status)
+//}
 
 // GET /API/SENSOR/{val}
 fn sensor_fetcher(req: Request<'_>) -> Response {
@@ -179,10 +179,8 @@ fn sensor_fetcher(req: Request<'_>) -> Response {
     let spk_vol = load!(SPEAKER_VOLUME);
     let _mic_muted = load!(MIC_MUTED);
     let _spk_muted = load!(SPEAKER_MUTED);
-    let temp = load!(TEMPERATURE);
-    let hum = load!(HUMIDITY);
-    let presence = load!(PRESENCE);
-    let brightness = load!(BACKLIGHT_PERCENT);
+
+    let brightness = load!(DISPLAY_BRIGHTNESS);
     let ip_raw = load!(CURRENT_IP);
     let ip = Ipv4Address::from(ip_raw);
     // let uptime
@@ -191,15 +189,11 @@ fn sensor_fetcher(req: Request<'_>) -> Response {
     
 
     let response_str = match sensor_name {
-        "temp" | "temperature" => format!("{}", temp),
-        "hum" | "humidity" => format!("{}", hum),
         "battery" | "battery_level" | "battery_percentage" => format!("{}", battery_percent),
         "battery_voltage" | "voltage" => format!("{}", battery_voltage),
         "brightness" | "display" => format!("{}", brightness),
-        "occupancy" | "motion" | "presence" => format!("{}", presence),
         "rssi" | "wifi_signal" | "wifi" => format!("{}", rssi),
         "ip" => format!("{}", ip),
-        "ir" => String::from("11111"),
         "media" => String::from("Nothing playing.."),
         "speaker" => format!("{}", spk_vol),
         "mic" => format!("{}", mic_vol),
@@ -216,11 +210,11 @@ fn voice_state_handler(req: Request<'_>) -> Response {
     match value {
         "start" => {
             info!("Voice recording started");
-            store!(MIC_ACTIVE, true);
+            store!(crate::state::MIC_ACTIVE, true);
         }
         "stop" => {
             info!("Voice recording stopped");
-            store!(MIC_ACTIVE, false);
+            store!(crate::state::MIC_ACTIVE, false);
         }
         _ => {
             info!("Invalid voice state: {}", value);
@@ -241,19 +235,17 @@ pub async fn init_routes() {
     // CONTROLLER ENDPOINTS
     register_route("/api/settings/power/state/{value}", power_state_handler).await;
     register_route("/api/settings/display/state/{value}", display_state_handler).await;
-    register_route("/api/settings/display/brightness/{value}", brightness_handler).await;
+//    register_route("/api/settings/display/brightness/{value}", brightness_handler).await;
     register_route("/api/settings/mic/volume/{value}", mic_volume_handler).await;
     register_route("/api/settings/mic/mute/{value}", mic_mute_handler).await;
     register_route("/api/settings/speaker/volume/{value}", speaker_volume_handler).await;
     register_route("/api/settings/speaker/mute/{value}", speaker_mute_handler).await;
     register_route("/api/settings/voice/state/{value}", voice_state_handler).await;     
-    register_route("/api/media/{action}", media_handler).await;
+//    register_route("/api/media/{action}", media_handler).await;
     
     // DATA ENDPOINTS
     // HANDLE ALL SENSOR VALUES ON `ESP32-S3-BOX-3`
     register_route("/api", api_list_handler).await;
     register_route("/api/sensor/{value}", sensor_fetcher).await;
 
-    tinyapi::log!("API routes registered");
-    log!("API routes registered!")
 }
