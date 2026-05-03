@@ -77,6 +77,17 @@ macro_rules! init_u8 {
     };
 }
 
+// INIT_u16
+// USAGE:
+// init_u16!(MIC_VOLUME, 72);
+#[macro_export]
+macro_rules! init_u16 {
+    ($name:ident, $val:expr) => {
+        pub static $name: core::sync::atomic::AtomicU16 = core::sync::atomic::AtomicU16::new($val);
+    };
+}
+
+
 // INIT_U32
 // USAGE:
 // init_u32!(BATTERY_VOLTAGE, 0);

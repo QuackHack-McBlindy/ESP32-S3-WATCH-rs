@@ -1,40 +1,9 @@
-#![no_std]
-
-//! # AXP2101 – Power Management Unit Driver (ESP32‑S3 register map)
-//!
-//! A `no_std`, platform‑independent driver for the X‑Powers **AXP2101** PMIC,
-//! using the register addresses validated on the ESP32‑S3 platform.
-//!
-//! It communicates over I²C using the [`embedded_hal`] abstractions and provides
-//! control over power rails, battery monitoring, charging, and ADC measurements.
-//!
-//! ## Example
-//!
-//! ```rust
-//! use axp2101::{Axp2101, Error};
-//! # fn example<I: embedded_hal::i2c::I2c>(i2c: &mut I) -> Result<(), Error<I::Error>> {
-//! let mut pmic = Axp2101::new();
-//! pmic.init(i2c)?;
-//!
-//! // Enable DCDC1 (3.3V) and ALDO1 (3.3V)
-//! pmic.enable_dc1(i2c)?;
-//! pmic.set_dc1_voltage(i2c, 3300)?;
-//! pmic.enable_aldo1(i2c)?;
-//! pmic.set_aldo1_voltage(i2c, 3300)?;
-//!
-//! let battery_mv = pmic.get_battery_voltage(i2c)?;
-//! let percent = pmic.get_battery_percent(i2c)?;
-//! # Ok(())
-//! # }
-//! ```
-//!
-//! ## License
-//! MIT
+// COMPONENTS/AXP2101
+// AXP2101 - POWER MANAGEMENT UNIT DRIVER
 
 use embedded_hal::i2c::I2c;
 
-
-// REGISTER ADDRESSES (ESP32‑S3 SPECIFIC)
+// REGISTER ADDRESSES
 const AXP2101_ADDR: u8 = 0x34;
 
 const REG_STATUS1: u8 = 0x00;
@@ -338,16 +307,3 @@ impl Default for Axp2101 {
         Self::new()
     }
 }
-
-
-// EXAMPLE FOR ESP32‑S3 (USING `esp_hal` I2C)
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     // Note: This would be replaced with your actual HAL I2C instance.
-//     // Example:
-//     // let i2c = I2C::new(...);
-//     // let mut pmic = Axp2101::new();
-//     // pmic.init(&mut i2c, &Default::default()).unwrap();
-//     // let bat = pmic.get_battery_voltage(&mut i2c).unwrap();
-// }

@@ -54,13 +54,45 @@ The watch streams audio to a companion backend service called [`yo`](https://git
 
 <br><br>
 
+## **Project Structure & Design**  
+
+I knew that if I did not do this properly - right away, that it would get really messy.  
+I amm basically writing a complete voice-driven API on top of every available run-time option of `esp-hal`.   
+Modular API and using only fully qualified paths everywhere, should help keep things as tiny as possible.      
+
+```
+ ESP32-S3-WATCH-rs
+├──  applications
+├──  base
+│   ├──  routes
+│   ├──  api.rs
+│   ├──  macros.rs
+│   ├──  mod.rs
+│   ├──  uptime.rs
+│   └──  wifi.rs
+├──  components
+│   └──  wifi.rs
+│   └──  buttons.rs
+│   └──  co5300.rs
+│   └──  ft3168.rs
+│   └──  mod.rs
+├──  gui
+├──  main.rs
+└──  state.rs
+```
+
+
+<br><br>
+
 
 ## **Roadmap**
+
 
 Project roadmap - watch as `watch` grows and evolves along the road.  
 Extend with more crazy ideas as they pop up.  
 
 - [x] Async & WiFi
+- [x] Handle multiple SSID/WiFi alternatives  
 - [x] Buttons & Display (lights up on wake word detection)
 - [x] i2s: RX Microphone  
 - [x] i2s: TX Speaker  
@@ -71,15 +103,17 @@ Extend with more crazy ideas as they pop up.
 - [x] On-Device API
 - [x] On-Device WebServer & Web Media Player   
 - [ ] OTA (auto update from git repo?)
+- [ ] Fully voice controlled. (Change any  option at run-time) 
 - [ ] Graphical User Interface
 - [ ] Applications 
 - [ ] Power optimised for battery operation  
 - [ ] Notification system  
 - [ ] Security & WireGuard?
+- [ ] Phone calls/text message (Bluetooth)
 - [x] Backend: `yo`
 
 `yo` is not only the backend server service but it's also where you will write your voice commands.  
-This is where your `ESP32-S3-BOX-3` microphone audio will be streamed.   
+This is where your `ESP32-S3` microphone audio will be streamed.   
 
 - [yo](https://github.com/QuackHack-McBlindy/yo)  
   - Wake Word Detection
@@ -96,7 +130,6 @@ This is where your `ESP32-S3-BOX-3` microphone audio will be streamed.
 
 A demo video/pictures will be added soon.    
 
-[Demo video coming soon]
 
 <br><br>
 
@@ -177,7 +210,7 @@ $ docker compose up
 ### **Frontend**  
 
 If you prefer to handle your media manually in the web browser - good news!  
-Your `ESP32S3` is now serving a fully featured media player that can cast to your TV's and has built-in transcoding.  
+Your `ESP32-S3` is now serving a fully featured media player that can cast to your TV's and has built-in transcoding.  
 You can go ahead and visit your device at:  
 
 `http://<ESP_IP>:80/`  
@@ -193,12 +226,11 @@ https://github.com/user-attachments/assets/91760f4f-0f31-439e-bc6b-8d2960c62cd8
 
 ### **API**    
 
-The API is designed to be easily expandable, it will most likely grow, best to check [src/base/api.rs](https://github.com/QuackHack-McBlindy/ESP32-S3-BOX-3-rs/blob/main/src/base/api.rs) for supported endpoints.    
-*or try fetch your available endpoints at:* `curl http://<ESP_IP>:80/api`   
+The API is designed to be easily expandable.       
+*Fetch all your available endpoints at:* `curl http://<ESP_IP>:80/api`      
   
   
-Using the internal API you can for example set the `ESP32-S3-BOX-3` display brightness *(LEDC)* tp 75 percentae using:    
-
+Using the internal API you can for example set the `ESP32-S3` display brightness to 75 percentage using:    
 
 ```bash
 curl http://<ESP_IP>:80/api/settings/display/brightness/75 
@@ -259,9 +291,32 @@ curl http://<ESP_IP>:80/api/settings/display/brightness/75
 
 ### **Architecture**
 
-*Coming soon..*  
+Check out the official [yo repository](https://github.com/QuackHack-Mcblindy/yo).  
 
-**Meanwhile:** [yo](https://github.com/QuackHack-Mcblindy/yo)  
+<br>
+
+The **yo** voice assistant employs a dual-language architecture that separates grammar compilation from runtime interpretation.  
+This design allows for a **rapid** fast, deterministic, and privacy-first offline-capable system.  
+  
+The architecture is fundamentally split into two parts:  
+
+- **Compile-Time (Nix):** Acts as a grammar compiler. It takes declarative sentence templates from configuration files, expands them into all possible variants, and pre-compiles them into optimized regular expressions.  
+
+- **Runtime (Rust):** Functions as a deterministic interpreter. It takes audio input, matches it against the pre-compiled patterns, extracts any defined parameters, and executes the corresponding script with those arguments.  
+
+<br>
+
+So - no more bad, expensive strategies like:  
+
+> * speech ➤ LLM ➤ guess intent  
+
+Instead the flow looks like:   
+
+> * speech ➤ deterministic intent match ➤ script  
+
+<br>
+
+**Result:** Designed for speeed and safety. All heavy lifting is done at build-time.   
 
 <br><br>
 
