@@ -61,24 +61,35 @@ I amm basically writing a complete voice-driven API on top of every available ru
 Modular API and using only fully qualified paths everywhere, should help keep things as tiny as possible.      
 
 ```
- ESP32-S3-WATCH-rs
-├──  applications
-├──  base
-│   ├──  routes
-│   ├──  api.rs
-│   ├──  macros.rs
-│   ├──  mod.rs
-│   ├──  uptime.rs
-│   └──  wifi.rs
-├──  components
-│   └──  wifi.rs
-│   └──  buttons.rs
-│   └──  co5300.rs
-│   └──  ft3168.rs
-│   └──  mod.rs
-├──  gui
-├──  main.rs
-└──  state.rs
+📂 ESP32-S3-WATCH-rs
+├── 📂 applications
+├── 📂 base
+│   ├── 📂 routes
+│   │   └── 📂 ... 
+│   │       └── 📂 ... 
+│   ├── 📄 api.rs
+│   ├── 📄 macros.rs
+│   ├── 📄 uptime.rs
+│   ├── 📄 wifi.rs
+│   └── 📄 mod.rs
+├── 📂 components
+│   ├── 📄 axp2101.rs
+│   ├── 📄 buttons.rs
+│   ├── 📄 co5300.rs
+│   ├── 📄 framebuffer.rs
+│   ├── 📄 ft3168.rs
+│   ├── 📄 pcf85063a.rs
+│   ├── 📄 qspi_bus.rs
+│   └── 📄 mod.rs
+├── 📂 gui
+│   ├── 📄 battery.rs
+│   ├── 📄 homescreen.rs
+│   ├── 📄 pages.rs
+│   ├── 📄 rolex.rs
+│   ├── 📄 time.rs
+│   └── 📄 mod.rs
+├── 📄 main.rs
+└── 📄 state.rs
 ```
 
 
@@ -104,7 +115,7 @@ Extend with more crazy ideas as they pop up.
 - [x] On-Device WebServer & Web Media Player   
 - [ ] OTA (auto update from git repo?)
 - [ ] Fully voice controlled. (Change any  option at run-time) 
-- [ ] Graphical User Interface
+- [x] Graphical User Interface
 - [ ] Applications 
 - [ ] Power optimised for battery operation  
 - [ ] Notification system  
