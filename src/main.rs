@@ -106,7 +106,7 @@ async fn display_task(
         .load(core::sync::atomic::Ordering::Relaxed);
 
     loop {
-        // PROCESS ONE-SHOT COMMANDS FROM THEthe VOICE HANDLER
+        // PROCESS ONE-SHOT COMMANDS FROM THE VOICE HANDLER
         if crate::components::co5300::consume_wake() {
             if !screen_on {
                 display.display_on();
@@ -131,7 +131,7 @@ async fn display_task(
             flash_toggle = !flash_toggle;
             if flash_toggle {
                 display.fill_screen(embedded_graphics::pixelcolor::Rgb565::new(255, 255, 0)); // YELLOW
-            } else {
+            } else { 
                 display.fill_screen(embedded_graphics::pixelcolor::Rgb565::new(0, 0, 0)); // BLACK
             }
         } else { // NORMAL PAGE -
@@ -172,9 +172,7 @@ async fn display_task(
 #[allow(clippy::large_stack_frames)]
 #[esp_rtos::main]
 async fn main(spawner: embassy_executor::Spawner) -> ! {
-    // HEAP ALLOC
-    esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 73744);
-    
+
     // UNDERCLOCK GIVES MORE FOR LESS. THINK ABOUT THE EARTH - SAVE ENERGY
     // TAKE IT DOWN TO 180MHZ (FROM DEFAULT 240MHZ)
     //let config = esp_hal::Config::default().with_cpu_clock(esp_hal::clock::CpuClock::_180MHz);
@@ -183,17 +181,15 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
 
     // ALLOCATE PSRAM
     esp_alloc::psram_allocator!(peripherals.PSRAM, esp_hal::psram);
+    // HEAP ALLOC
+    esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 73744);
+    
 
     // SOFTWARE INTERRUPT SETUP
     let _sw_ints = esp_hal::interrupt::software::SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
     let sw_int0 = unsafe { esp_hal::interrupt::software::SoftwareInterrupt::steal() };
     let timg0 = esp_hal::timer::timg::TimerGroup::new(peripherals.TIMG0);
     esp_rtos::start(timg0.timer0, sw_int0);
-    defmt::info!(
-        "Started {} v{}",
-        crate::state::PROJECT_NAME,
-        crate::state::FW_VERSION
-    );
 
     // TRACK TIME SINCE BOOT FOR UPTIME CALCULATION
     let boot_time = embassy_time::Instant::now();
@@ -204,6 +200,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
         esp_hal::gpio::InputConfig::default().with_pull(esp_hal::gpio::Pull::Up)
     );
 
+    // BOOT BUTTON (RIGHT SIDE - UPPER BUTTON)
     let button_boot = esp_hal::gpio::Input::new(
         peripherals.GPIO0,
         esp_hal::gpio::InputConfig::default().with_pull(esp_hal::gpio::Pull::Up)
@@ -227,12 +224,12 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
 
 
     
-    // Store the bus globally
+    // STORE BUS GLOBALLY
     critical_section::with(|cs| {
         I2C_BUS.borrow_ref_mut(cs).replace(i2c_a);
     });
     
-    // CREATE PMU (driver struct – does not hold a bus reference)
+    // CREATE PMU (DRIVER STRUCT – DOES NOT HOLD BUS REF)
     let pmu = crate::components::axp2101::Axp2101::new();
     
     // INITIALISE ALL I²C DEVICES (PMU, audio, touch, first battery read)
@@ -309,6 +306,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     
         // BATTERY READING
         let mv = pmu.get_battery_voltage(i2c_bus).unwrap_or(0);
+        let is_charging = pmu.is_charging(i2c_bus).unwrap_or(false);    
     
         //  TOUCH
         let mut touch_rst = esp_hal::gpio::Output::new(peripherals.GPIO9, esp_hal::gpio::Level::High, esp_hal::gpio::OutputConfig::default());
@@ -366,7 +364,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     let (stack, remote_addr) = base::wifi::init(&spawner, peripherals.WIFI, backend_port).await;
     
     // LET IT CONNECT PROPERLY BEFORE CONTINUING
-    delay_s!(4);
+    delay_s!(5);
 
     // SYNC RTC CLOCK TO NTP TIME
     match crate::components::pcf85063a::ntp_sync(&stack).await {
@@ -429,17 +427,24 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     // INIT API ROUTES
     crate::base::api::init_routes().await;
 
+    defmt::info!("═╬═╬═╬═╬═╬═╬═╬═╬═╬═╬═╬═╬═╬═╬═");
+    defmt::info!(
+        "STARTED {} v{}",
+        crate::state::PROJECT_NAME,
+        crate::state::FW_VERSION
+    );
+    defmt::info!("═╬═╬═╬═╬═╬═╬═╬═╬═╬═╬═╬═╬═╬═╬═");
+
 
     // TASKS
-    
-    // WEB SERVER TASK PORT 80
-    spawn!(spawner, tinyapi::web_server_task(stack));  
 
+    // MICROPHONE TASK (STREAM AUDIO TO SERVER OVER TCP PORT 12345)
+    spawn!(spawner, yo_esp::audio_capture_task(i2s_rx, stack, remote_addr, "esp", handler));
     // SPEAKER TASK (STREAM AUDIO TO SPEAKER OVER TCP PORT 12345)
     spawn!(spawner, yo_esp::speaker_task(tx_transfer));
     spawn!(spawner, yo_esp::stream_speaker(stack, backend_port));
-    // MICROPHONE TASK (STREAM AUDIO TO SERVER OVER TCP PORT 12345)
-    spawn!(spawner, yo_esp::audio_capture_task(i2s_rx, stack, remote_addr, "esp", handler));
+    // WEB SERVER TASK PORT 80
+    spawn!(spawner, tinyapi::web_server_task(stack));  
     // BUTTON MONITOR TASK
     spawn!(spawner, crate::components::buttons::buttons_task(button_boot, button_power));
     // TOUCH TASK

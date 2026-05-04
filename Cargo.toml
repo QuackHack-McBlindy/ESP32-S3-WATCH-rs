@@ -1,6 +1,6 @@
 [package]
 name = "ESP32-S3-WATCH"
-version = "0.1.0"
+version = "0.1.1"
 description = "Bare Metal (no_std + alloc) firmware for `WaveShare ESP32-S3-Touch-AMOLED-2.06` using `esp-hal` as Hardware Abstraction Layer and `embassy` as Async runtime. Firmware is mainly focused on accessibility using voice assistance."
 edition = "2024"
 

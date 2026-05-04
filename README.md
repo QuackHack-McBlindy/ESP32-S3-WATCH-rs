@@ -22,9 +22,9 @@ as a reference: I have **57** [yo](https://github.com/QuackHack-McBlindy/dotfile
 
 ## **Table Of Contents**
 
+- [Demo](#demo)
 - [Overview](#overview)
 - [Roadmap](#roadmap)
-- [Demo](#demo)
 - [Installation](#installation)
 - [Usage](#usage)
   - [Frontend](#frontend)
@@ -44,6 +44,18 @@ as a reference: I have **57** [yo](https://github.com/QuackHack-McBlindy/dotfile
 - [License](#license)
 
 <br><br>  
+
+
+## **Demo**
+
+
+
+https://github.com/user-attachments/assets/357bf377-0874-4f42-8d15-3532c31bc813
+
+  
+**Yes, it's fast!** *(TTS is bottleneck)*  
+
+<br><br>
 
 
 ## **Overview**
@@ -132,14 +144,6 @@ This is where your `ESP32-S3` microphone audio will be streamed.
   - Text To Speech
   - Voice Command Execution
   - Control any device option with your voice!
-
-
-<br><br>
-
-
-## **Demo**
-
-A demo video/pictures will be added soon.    
 
 
 <br><br>
@@ -590,4 +594,5 @@ Audio codecs (ES7210/ES8311) are configured via I2C, and are used as slaves.
 
 This project is licensed under the terms of the MIT license.  
 See the `LICENSE` file in the repository for full details.  
+
 
