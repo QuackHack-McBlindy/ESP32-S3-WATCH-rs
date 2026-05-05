@@ -206,12 +206,18 @@ pub async fn touch_task() {
             let mut bus_ref = I2C_BUS.borrow_ref_mut(cs);
             let i2c_bus = bus_ref.as_mut()?;
             let mut touch = Ft3168Touch::new(i2c_bus);
-            touch.read().ok().flatten()          // now Option<TouchPoint>
+            touch.read().ok().flatten() // NOW `Option<TouchPoint>`
         });
 
         match point {
             Some(tp) => {
-                if !tracking {
+                if !tracking {        
+                    // TOUCH DETECTED – WAKE UP DISPLAY (IF OFF)
+                    if !crate::load!(crate::state::DISPLAY_STATE) {
+                        crate::components::co5300::wake_up();
+                        crate::store!(crate::state::DISPLAY_STATE, true);
+                    }
+                
                     tracking = true;
                     start_x = tp.x;
                     start_y = tp.y;

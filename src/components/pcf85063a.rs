@@ -2,7 +2,6 @@
 // PCF85063A - REAL TIME CLOCK DRIVER
 
 use embedded_hal::i2c::I2c;
-use defmt::info;
 
 const PCF85063A_ADDR: u8 = 0x51;
 

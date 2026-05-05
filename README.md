@@ -48,12 +48,23 @@ as a reference: I have **57** [yo](https://github.com/QuackHack-McBlindy/dotfile
 
 ## **Demo**
 
-
+#### **Voice Assistant Video**  
 
 https://github.com/user-attachments/assets/357bf377-0874-4f42-8d15-3532c31bc813
 
   
 **Yes, it's fast!** *(TTS is bottleneck)*  
+
+#### **Pictures**
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/time.jpeg">
+  <img src="resource/time.jpeg" alt="Clock" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/battery.jpeg">
+  <img src="resource/battery.jpeg" alt="Battery" width="148">
+</a>
+
 
 <br><br>
 
@@ -88,10 +99,13 @@ Modular API and using only fully qualified paths everywhere, should help keep th
 │   ├── 📄 axp2101.rs
 │   ├── 📄 buttons.rs
 │   ├── 📄 co5300.rs
+│   ├── 📄 CpuClock.rs
 │   ├── 📄 framebuffer.rs
 │   ├── 📄 ft3168.rs
 │   ├── 📄 pcf85063a.rs
+│   ├── 📄 qmi8658.rs
 │   ├── 📄 qspi_bus.rs
+│   ├── 📄 storage.rs
 │   └── 📄 mod.rs
 ├── 📂 gui
 │   ├── 📄 battery.rs
@@ -130,7 +144,7 @@ Extend with more crazy ideas as they pop up.
 - [x] Graphical User Interface
 - [ ] Applications 
 - [ ] Power optimised for battery operation  
-- [ ] Notification system  
+- [x] Broadcasting all TTS-messages to every ESP32 device.   
 - [ ] Security & WireGuard?
 - [ ] Phone calls/text message (Bluetooth)
 - [x] Backend: `yo`
@@ -271,6 +285,7 @@ curl http://<ESP_IP>:80/api/settings/display/brightness/75
 | `/api/voice/executed` | Called after a voice command succeeds; sets brightness to 0% and returns `"OK"` |
 | `/api/voice/failed` | Called after a voice command fails; sets brightness to 0% and returns `"OK"` |
 | `/api/media/{action}` | Media control (e.g., `play`, `pause`, `next`, `prev`) |
+| `/api/sensors` | Read all sensor/system values |
 | `/api/sensor/{value}` | Read a sensor or system value (see supported keys below) |
 
 ### Supported sensor keys for `/api/sensor/{value}`

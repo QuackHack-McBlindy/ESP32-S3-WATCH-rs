@@ -30,7 +30,6 @@ mod state;
 mod components;
 mod base;
 mod gui;
-//mod applications;
 
 
 // TYPE ALIASES
@@ -71,7 +70,7 @@ impl yo_esp::CommandHandler for VoiceHandler {
         alloc::boxed::Box::pin(async move {
             crate::components::co5300::stop_flash();
             yo_esp::play_done().await;
-            crate::components::co5300::sleep_now();            
+            crate::components::co5300::sleep_now();
         })
     }
 
@@ -85,14 +84,13 @@ impl yo_esp::CommandHandler for VoiceHandler {
     }
 }
 
-
 // DISPLAY CONTROLLER TASK
 #[embassy_executor::task]
 async fn display_task(
     mut fb: crate::components::framebuffer::Framebuffer,
     mut display: crate::components::co5300::Co5300Display<'static>,
 ) {
-    // INITIALISATION
+    // INIT
     defmt::debug!("display task started");
     display.set_brightness(0xFF);
     // START WITH THE SCREEN OFF - WAKE IT BY SAYING: 
@@ -102,8 +100,8 @@ async fn display_task(
     // STATE VARIABLES 
     let mut screen_on = false;
     let mut flash_toggle = false;
-    let mut last_page = crate::gui::pages::CURRENT_PAGE
-        .load(core::sync::atomic::Ordering::Relaxed);
+    let mut last_page = crate::load!(crate::gui::pages::CURRENT_PAGE); 
+    //crate::gui::pages::CURRENT_PAGE.load(core::sync::atomic::Ordering::Relaxed);
 
     loop {
         // PROCESS ONE-SHOT COMMANDS FROM THE VOICE HANDLER
@@ -158,10 +156,6 @@ async fn display_task(
             }
         }
 
-        // DISPLAY BRIGHTNESS (PERCENT)
-        let percent = crate::load!(crate::state::DISPLAY_BRIGHTNESS);
-        display.brightness_percent(percent);
-
         // WAIT 200MS FOR THE NEXT CYCLE
         embassy_time::Timer::after(embassy_time::Duration::from_millis(200)).await;
     }
@@ -206,14 +200,88 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
         esp_hal::gpio::InputConfig::default().with_pull(esp_hal::gpio::Pull::Up)
     );
 
-    // ENABLE POWER AMPLIFIER
-    let _pa_enable = esp_hal::gpio::Output::new(
+    // DISABLE (LOW) POWER AMPLIFIER - WE ENABLE (HIGH) LATER
+    let amp = esp_hal::gpio::Output::new(
         peripherals.GPIO46,
-        esp_hal::gpio::Level::High,
+        esp_hal::gpio::Level::Low,
         esp_hal::gpio::OutputConfig::default()
     );
 
-    // I2C BUS A
+
+    // MICRO SECURE DIGITAL CARD (STORAGE OVER SPI)
+    defmt::info!("STORAGE: Init...");
+    let sd_spi_config = esp_hal::spi::master::Config::default()
+        .with_frequency(esp_hal::time::Rate::from_mhz(4))
+        .with_mode(esp_hal::spi::Mode::_0);
+    let sd_spi = esp_hal::spi::master::Spi::new(peripherals.SPI3, sd_spi_config)
+        .expect("SPI FAILURE! (SD-CARD)")
+        .with_sck(peripherals.GPIO2)
+        .with_mosi(peripherals.GPIO1)
+        .with_miso(peripherals.GPIO3);
+    let sd_cs = esp_hal::gpio::Output::new(peripherals.GPIO17, esp_hal::gpio::Level::High, esp_hal::gpio::OutputConfig::default());
+
+    let sd_spi_dev = embedded_hal_bus::spi::ExclusiveDevice::new_no_delay(sd_spi, sd_cs).unwrap();
+    let mut sd_card = embedded_sdmmc::SdCard::new(sd_spi_dev, esp_hal::delay::Delay::new());
+    let mut sd_ok = false;
+    let mut songs: alloc::vec::Vec<alloc::string::String> = alloc::vec::Vec::new();
+    match sd_card.num_bytes() {
+        Ok(size) => {
+            defmt::info!("STORAGE: Card {}MB", size / 1024 / 1024);
+
+            // SCAN FOR /music/ directory
+            struct DummyTime;
+            impl embedded_sdmmc::TimeSource for DummyTime {
+                fn get_timestamp(&self) -> embedded_sdmmc::Timestamp {
+                    embedded_sdmmc::Timestamp::from_calendar(2026, 4, 6, 12, 0, 0).unwrap()
+                }
+            }
+
+            let mut volume_mgr = embedded_sdmmc::VolumeManager::new(sd_card, DummyTime);
+            match volume_mgr.open_raw_volume(embedded_sdmmc::VolumeIdx(0)) {
+            Ok(volume) => {
+                if let Ok(root_dir) = volume_mgr.open_root_dir(volume) {
+                    if let Ok(mp3_dir) = volume_mgr.open_dir(root_dir, "Music") {
+                        defmt::info!("STORAGE: /Music/ directory found!");
+                        let _ = volume_mgr.iterate_dir(mp3_dir, |entry| {
+                            if !entry.attributes.is_directory() {
+                                let name = core::str::from_utf8(&entry.name.base_name()).unwrap_or("?");
+                                let ext = core::str::from_utf8(&entry.name.extension()).unwrap_or("");
+                                let full = alloc::format!("{}.{}", name.trim(), ext.trim());
+                                defmt::info!("STORAGE:   {}", full.as_str());
+                                songs.push(full);
+                            }
+                        });
+                        defmt::info!("STORAGE: {} files found", songs.len());
+                        let _ = volume_mgr.close_dir(mp3_dir);
+                        sd_ok = true;
+                    } else {
+                        if let Ok(mp3_dir) = volume_mgr.open_dir(root_dir, "music") {
+                            defmt::info!("STORAGE: /music/ directory found!");
+                            let _ = volume_mgr.iterate_dir(mp3_dir, |entry| {
+                                if !entry.attributes.is_directory() {
+                                    let name = core::str::from_utf8(&entry.name.base_name()).unwrap_or("?");
+                                    let ext = core::str::from_utf8(&entry.name.extension()).unwrap_or("");
+                                    let full = alloc::format!("{}.{}", name.trim(), ext.trim());
+                                    defmt::info!("STORAGE:  {}", full.as_str());
+                                    songs.push(full);
+                                }
+                            });
+                            defmt::info!("STORAGE: {} files found", songs.len());
+                            let _ = volume_mgr.close_dir(mp3_dir);
+                            sd_ok = true;
+                        } else { defmt::info!("STORAGE: No /Music/ or /music/ directory found!"); }
+                    }
+                    let _ = volume_mgr.close_dir(root_dir);
+                } else { defmt::info!("STORAGE: Cannot open root dir!"); }
+            }
+            Err(e) => { defmt::info!("STORAGE: Cannot open volume!"); }
+        }
+        }
+        Err(_) => defmt::info!("STORAGE: No micro SD-card!"),
+    }
+
+
+    // I2C
     let i2c_a = esp_hal::i2c::master::I2c::new(
         peripherals.I2C0,
         esp_hal::i2c::master::Config::default().with_frequency(esp_hal::time::Rate::from_khz(400)),
@@ -237,7 +305,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
         let mut bus_ref = I2C_BUS.borrow_ref_mut(cs);
         let i2c_bus = bus_ref.as_mut().expect("I2C bus missing");
     
-        // ES7210 / ES8311 structs
+        // ES7210 / ES8311 STRUCTS
         let es7210 = es7210::Es7210::new(0x40);
         let es8311 = es8311::Es8311::new(0x18);
     
@@ -245,8 +313,13 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
         if let Err(e) = pmu.init(i2c_bus, &crate::components::axp2101::Axp2101Config::default()) {
             defmt::error!("PMU init failed: {:?}", Debug2Format(&e));
         } else { defmt::info!("AXP2101 Successful initialization"); }
+
+
+        // QMI8658 - IMU (ACCELEROMETER ++ GYROSCOPE) 
+        let mut imu = crate::components::qmi8658::Qmi8658Imu::new(&mut *i2c_bus);
+        let _ = imu.init();
     
-        // ES7210 (ADC)
+        // ES7210 (ADC/MICROPHONES)
         let codec_cfg = es7210::CodecConfig {
             sample_rate_hz: crate::state::I2S_SAMPLE_RATE,
             mclk_ratio: 256,
@@ -272,7 +345,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
             defmt::info!("Failed to configure ES7210 mute status {:?}", defmt::Debug2Format(&e));
         }
 
-        // ES8311 (DAC) 
+        // ES8311 (DAC/SPEAKER) 
         let resolution = match crate::state::I2S_BIT_WIDTH {
             16 => es8311::Resolution::Bits16,
             24 => es8311::Resolution::Bits24,
@@ -317,6 +390,8 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
         let mut touch = crate::components::ft3168::Ft3168Touch::new(i2c_bus);
         let _ = touch.init();
         defmt::info!("FT3168 Successful initialization");
+
+
     
         // STORE THE DRIVER OBJECTS GLOBALLY FOR LATER USE
         ES7210.borrow_ref_mut(cs).replace(es7210);
