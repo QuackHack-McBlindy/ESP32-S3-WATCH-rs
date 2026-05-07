@@ -12,7 +12,8 @@
 
 // IMPORTS
 use esp_println as _;
-use defmt::{Debug2Format};
+use defmt::{Debug2Format}; 
+// FROM HERE ON WE'LL ONLY USE FULLY QUALIFIED PATHS
 
 
 // PANIC HANDLER
@@ -30,11 +31,12 @@ mod state;
 mod components;
 mod base;
 mod gui;
+mod applications;
 
 
 // TYPE ALIASES
 pub type I2cBus = esp_hal::i2c::master::I2c<'static, esp_hal::Blocking>;
-  
+
 // SHARED RESOURCES WITH FULLY QUALIFIED PATHS
 pub static TOUCH_CHANNEL: embassy_sync::channel::Channel<embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex, crate::components::ft3168::SwipeDirection, 5> = embassy_sync::channel::Channel::new();
 pub static ES7210: critical_section::Mutex<core::cell::RefCell<Option<es7210::Es7210>>> =
@@ -100,9 +102,14 @@ async fn display_task(
     // STATE VARIABLES 
     let mut screen_on = false;
     let mut flash_toggle = false;
-    let mut last_page = crate::load!(crate::gui::pages::CURRENT_PAGE); 
-    //crate::gui::pages::CURRENT_PAGE.load(core::sync::atomic::Ordering::Relaxed);
+    let mut last_page = crate::load!(crate::gui::pages::CURRENT_PAGE);
 
+    // TRACK LAST ACTIVITY TIME
+    let timeout_secs = crate::load!(crate::state::DISPLAY_TIMEOUT_SECS) as u64;
+    let timeout_duration = embassy_time::Duration::from_secs(timeout_secs);
+    // LAST ACTIVITY STARTS NOW (WON'T BE USED UNTIL SCREEN TURNS ON)
+    let mut last_activity = embassy_time::Instant::now();
+    
     loop {
         // PROCESS ONE-SHOT COMMANDS FROM THE VOICE HANDLER
         if crate::components::co5300::consume_wake() {
@@ -110,6 +117,8 @@ async fn display_task(
                 display.display_on();
                 screen_on = true;
             }
+            // RESET TIMER
+            last_activity = embassy_time::Instant::now();
             // FORCE REDRAW OF CURRENT PAGE IMMEDIATELY.
             last_page = u8::MAX;
         }
@@ -120,6 +129,28 @@ async fn display_task(
                 screen_on = false;
                 // AFTER SLEEP, WE WANT A FULL REDRAW ON NEXT WAKE
                 last_page = u8::MAX;
+            }
+        }
+
+        // CHECK FOR TOUCH EVENTS
+        while let Ok(dir) = TOUCH_CHANNEL.try_receive() {
+            if !screen_on {
+                // WAKE SCREEN ON TOUCH
+                display.display_on();
+                screen_on = true;
+                last_page = u8::MAX;
+            } // RESET TIMER
+            last_activity = embassy_time::Instant::now();
+        }
+
+        // APPLY DISPLAY ACTIVITY TIMEOUT (ONLY IF SCREEN IS ON)
+        if screen_on && !crate::components::co5300::is_flashing() {
+            let idle_time = embassy_time::Instant::now() - last_activity;
+            if idle_time >= timeout_duration {
+                display.display_off();
+                screen_on = false;
+                last_page = u8::MAX;
+                continue; // SKIP RENDERING THIS CYCLE
             }
         }
 
@@ -146,7 +177,7 @@ async fn display_task(
                         0 => crate::gui::time::draw(&mut fb),
                         // PAGE 1 === BIG BATTERY
                         1 => crate::gui::battery::draw(&mut fb),
-                        // PAGE 2 === HOMESCREEN - SWIPE BETWEEEN APPS
+                        // PAGE 2 === HOMESCREEN - SWIPE BETWEEEN APPLICATIONS
                         2 => crate::gui::homescreen::draw(&mut fb),
                         _ => {}
                     }
@@ -155,7 +186,6 @@ async fn display_task(
                 }
             }
         }
-
         // WAIT 200MS FOR THE NEXT CYCLE
         embassy_time::Timer::after(embassy_time::Duration::from_millis(200)).await;
     }
@@ -166,12 +196,13 @@ async fn display_task(
 #[allow(clippy::large_stack_frames)]
 #[esp_rtos::main]
 async fn main(spawner: embassy_executor::Spawner) -> ! {
-
-    // UNDERCLOCK GIVES MORE FOR LESS. THINK ABOUT THE EARTH - SAVE ENERGY
-    // TAKE IT DOWN TO 180MHZ (FROM DEFAULT 240MHZ)
-    //let config = esp_hal::Config::default().with_cpu_clock(esp_hal::clock::CpuClock::_180MHz);
+    // QUACKHACK-MCBLINDY ALWAYS UNDERCLOCKS!
+    // IT GIVES MORE FOR LESS!
+    // HERE WE BOOT AT MAX (240MHZ)
+    // SINCE WE CAN CONTROL CLOCKS AT RUN-TIME LATER
     let config = esp_hal::Config::default().with_cpu_clock(esp_hal::clock::CpuClock::max());
     let peripherals = esp_hal::init(config);
+
 
     // ALLOCATE PSRAM
     esp_alloc::psram_allocator!(peripherals.PSRAM, esp_hal::psram);
@@ -201,7 +232,8 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     );
 
     // DISABLE (LOW) POWER AMPLIFIER - WE ENABLE (HIGH) LATER
-    let amp = esp_hal::gpio::Output::new(
+    // TO AVOID THE SCARY POP SOUND
+    let mut amp = esp_hal::gpio::Output::new(
         peripherals.GPIO46,
         esp_hal::gpio::Level::Low,
         esp_hal::gpio::OutputConfig::default()
@@ -209,7 +241,6 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
 
 
     // MICRO SECURE DIGITAL CARD (STORAGE OVER SPI)
-    defmt::info!("STORAGE: Init...");
     let sd_spi_config = esp_hal::spi::master::Config::default()
         .with_frequency(esp_hal::time::Rate::from_mhz(4))
         .with_mode(esp_hal::spi::Mode::_0);
@@ -221,65 +252,11 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     let sd_cs = esp_hal::gpio::Output::new(peripherals.GPIO17, esp_hal::gpio::Level::High, esp_hal::gpio::OutputConfig::default());
 
     let sd_spi_dev = embedded_hal_bus::spi::ExclusiveDevice::new_no_delay(sd_spi, sd_cs).unwrap();
-    let mut sd_card = embedded_sdmmc::SdCard::new(sd_spi_dev, esp_hal::delay::Delay::new());
-    let mut sd_ok = false;
-    let mut songs: alloc::vec::Vec<alloc::string::String> = alloc::vec::Vec::new();
-    match sd_card.num_bytes() {
-        Ok(size) => {
-            defmt::info!("STORAGE: Card {}MB", size / 1024 / 1024);
-
-            // SCAN FOR /music/ directory
-            struct DummyTime;
-            impl embedded_sdmmc::TimeSource for DummyTime {
-                fn get_timestamp(&self) -> embedded_sdmmc::Timestamp {
-                    embedded_sdmmc::Timestamp::from_calendar(2026, 4, 6, 12, 0, 0).unwrap()
-                }
-            }
-
-            let mut volume_mgr = embedded_sdmmc::VolumeManager::new(sd_card, DummyTime);
-            match volume_mgr.open_raw_volume(embedded_sdmmc::VolumeIdx(0)) {
-            Ok(volume) => {
-                if let Ok(root_dir) = volume_mgr.open_root_dir(volume) {
-                    if let Ok(mp3_dir) = volume_mgr.open_dir(root_dir, "Music") {
-                        defmt::info!("STORAGE: /Music/ directory found!");
-                        let _ = volume_mgr.iterate_dir(mp3_dir, |entry| {
-                            if !entry.attributes.is_directory() {
-                                let name = core::str::from_utf8(&entry.name.base_name()).unwrap_or("?");
-                                let ext = core::str::from_utf8(&entry.name.extension()).unwrap_or("");
-                                let full = alloc::format!("{}.{}", name.trim(), ext.trim());
-                                defmt::info!("STORAGE:   {}", full.as_str());
-                                songs.push(full);
-                            }
-                        });
-                        defmt::info!("STORAGE: {} files found", songs.len());
-                        let _ = volume_mgr.close_dir(mp3_dir);
-                        sd_ok = true;
-                    } else {
-                        if let Ok(mp3_dir) = volume_mgr.open_dir(root_dir, "music") {
-                            defmt::info!("STORAGE: /music/ directory found!");
-                            let _ = volume_mgr.iterate_dir(mp3_dir, |entry| {
-                                if !entry.attributes.is_directory() {
-                                    let name = core::str::from_utf8(&entry.name.base_name()).unwrap_or("?");
-                                    let ext = core::str::from_utf8(&entry.name.extension()).unwrap_or("");
-                                    let full = alloc::format!("{}.{}", name.trim(), ext.trim());
-                                    defmt::info!("STORAGE:  {}", full.as_str());
-                                    songs.push(full);
-                                }
-                            });
-                            defmt::info!("STORAGE: {} files found", songs.len());
-                            let _ = volume_mgr.close_dir(mp3_dir);
-                            sd_ok = true;
-                        } else { defmt::info!("STORAGE: No /Music/ or /music/ directory found!"); }
-                    }
-                    let _ = volume_mgr.close_dir(root_dir);
-                } else { defmt::info!("STORAGE: Cannot open root dir!"); }
-            }
-            Err(e) => { defmt::info!("STORAGE: Cannot open volume!"); }
-        }
-        }
-        Err(_) => defmt::info!("STORAGE: No micro SD-card!"),
-    }
-
+    let sd_card = embedded_sdmmc::SdCard::new(sd_spi_dev, esp_hal::delay::Delay::new());
+    // MOVES OWNERSHIP INTO THE MODULE 
+    crate::components::storage::init(sd_card);    
+    defmt::info!("STORAGE Successful initialization");
+    
 
     // I2C
     let i2c_a = esp_hal::i2c::master::I2c::new(
@@ -289,7 +266,6 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     .unwrap()
     .with_sda(peripherals.GPIO15)
     .with_scl(peripherals.GPIO14);
-
 
     
     // STORE BUS GLOBALLY
@@ -378,8 +354,8 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
         let _ = rtc.init();
     
         // BATTERY READING
-        let mv = pmu.get_battery_voltage(i2c_bus).unwrap_or(0);
-        let is_charging = pmu.is_charging(i2c_bus).unwrap_or(false);    
+        let _mv = pmu.get_battery_voltage(i2c_bus).unwrap_or(0);
+        let _is_charging = pmu.is_charging(i2c_bus).unwrap_or(false);    
     
         //  TOUCH
         let mut touch_rst = esp_hal::gpio::Output::new(peripherals.GPIO9, esp_hal::gpio::Level::High, esp_hal::gpio::OutputConfig::default());
@@ -390,9 +366,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
         let mut touch = crate::components::ft3168::Ft3168Touch::new(i2c_bus);
         let _ = touch.init();
         defmt::info!("FT3168 Successful initialization");
-
-
-    
+   
         // STORE THE DRIVER OBJECTS GLOBALLY FOR LATER USE
         ES7210.borrow_ref_mut(cs).replace(es7210);
         ES8311.borrow_ref_mut(cs).replace(es8311);
@@ -502,13 +476,12 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     // INIT API ROUTES
     crate::base::api::init_routes().await;
 
-    defmt::info!("═╬═╬═╬═╬═╬═╬═╬═╬═╬═╬═╬═╬═╬═╬═");
-    defmt::info!(
-        "STARTED {} v{}",
+    defmt::info!("╬═══════════════════════════════╬");
+    defmt::info!("╬ STARTED {} v{} ╬",
         crate::state::PROJECT_NAME,
         crate::state::FW_VERSION
     );
-    defmt::info!("═╬═╬═╬═╬═╬═╬═╬═╬═╬═╬═╬═╬═╬═╬═");
+    defmt::info!("╬═══════════════════════════════╬");
 
 
     // TASKS
@@ -532,10 +505,15 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     spawn!(spawner, crate::components::pcf85063a::rtc_update_task());
 
 
+    // IT'S NOW SAFE TO CRANK UP THE AMP
+    // (WITHOUT LOAD POPPING NOISE)
+    amp.set_high();
+    delay_s!(3);
+    
     // PLAY BOOT SOUND
     yo_esp::play_ding().await;
 
-    
+         
     // MAIN LOOP
     loop { // GET BATTERY STATUS
         let (percent, voltage_mv, charging) = critical_section::with(|cs| {
@@ -549,17 +527,23 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
         });
 
         let elapsed = embassy_time::Instant::now() - boot_time;
+        let uptime_secs = elapsed.as_secs() as u32;
         let days = elapsed.as_secs() / 86400;
         let hours = (elapsed.as_secs() % 86400) / 3600;
         let minutes = (elapsed.as_secs() % 3600) / 60;
 
+        crate::store!(crate::state::UPTIME_SECS, uptime_secs);
         crate::store!(crate::state::BATTERY_VOLTAGE, voltage_mv as u32);
         crate::store!(crate::state::BATTERY_PERCENT, percent);
         crate::store!(crate::state::BATTERY_CHARGING, charging);
 
         // TIME: (HH:MM:SS)
         let maybe_time = critical_section::with(|cs| crate::state::CURRENT_TIME.borrow(cs).get());
-        if let Some(dt) = maybe_time { defmt::info!("⏰ {:02}:{:02}:{:02}", dt.hours, dt.minutes, dt.seconds); }
+        if let Some(dt) = maybe_time {
+            defmt::info!("⏰ {:02}:{:02}:{:02}", dt.hours, dt.minutes, dt.seconds);   // logging stays
+            let secs = dt.hours as u32 * 3600 + dt.minutes as u32 * 60 + dt.seconds as u32;
+            crate::store!(crate::state::CURRENT_TIME_SECS, secs);
+        }
 
         // FORMAT
         let rssi = crate::load!(crate::state::RSSI);

@@ -50,7 +50,10 @@ as a reference: I have **57** [yo](https://github.com/QuackHack-McBlindy/dotfile
 
 #### **Voice Assistant Video**  
 
-https://github.com/user-attachments/assets/357bf377-0874-4f42-8d15-3532c31bc813
+
+Turn up your volume before hitting play.  
+
+[Play demo video](https://github.com/user-attachments/assets/357bf377-0874-4f42-8d15-3532c31bc813)
 
   
 **Yes, it's fast!** *(TTS is bottleneck)*  
@@ -86,6 +89,8 @@ Modular API and using only fully qualified paths everywhere, should help keep th
 ```
 📂 ESP32-S3-WATCH-rs
 ├── 📂 applications
+│   ├── 📄 media_player.rs
+│   └── 📄 mod.rs
 ├── 📂 base
 │   ├── 📂 routes
 │   │   └── 📂 ... 
@@ -135,17 +140,18 @@ Extend with more crazy ideas as they pop up.
 - [x] i2s: TX Speaker  
 - [x] i2s: Simultaneous RX & TX 
 - [x] Voice Command Execution (Wake word, speech to shell command)
+- [ ] Push-to-talk feature (to save battery)
 - [x] Media Player - Stream any audio to speaker (wav, mp3, flac, mp4, ...)
+- [x] Fuzzy search & play local media from the SD card. (with downsampling) 
 - [x] Intercom `ffmpeg -f alsa -i default -f s16le -ar 16000 -ac 2 - | nc <ESP_IP> 12345`
 - [x] On-Device API
 - [x] On-Device WebServer & Web Media Player   
 - [ ] OTA (auto update from git repo?)
 - [ ] Fully voice controlled. (Change any  option at run-time) 
 - [x] Graphical User Interface
-- [ ] Applications 
+- [ ] QR codes.
 - [ ] Power optimised for battery operation  
 - [x] Broadcasting all TTS-messages to every ESP32 device.   
-- [ ] Security & WireGuard?
 - [ ] Phone calls/text message (Bluetooth)
 - [x] Backend: `yo`
 
@@ -280,12 +286,9 @@ curl http://<ESP_IP>:80/api/settings/display/brightness/75
 | `/api/settings/mic/mute/{value}` | Mute/unmute mic: `1`/`on`/`mute`, `0`/`off`/`unmute`, or `toggle` |
 | `/api/settings/speaker/volume/{value}` | Set speaker volume (0–100%) |
 | `/api/settings/speaker/mute/{value}` | Mute/unmute speaker: same options as mic mute |
-| `/api/settings/voice/state/{value}` | Voice recording command: `start` or `stop` |
-| `/api/voice/detected` | Called when voice is detected; sets brightness to 70% and returns `"OK"` |
-| `/api/voice/executed` | Called after a voice command succeeds; sets brightness to 0% and returns `"OK"` |
-| `/api/voice/failed` | Called after a voice command fails; sets brightness to 0% and returns `"OK"` |
 | `/api/media/{action}` | Media control (e.g., `play`, `pause`, `next`, `prev`) |
-| `/api/sensors` | Read all sensor/system values |
+| `/api/media/search/songs/{song}` | Fuzzy search & play local MP3 files stored on the SD card. |
+| `/api/sensors` | Returns all sensor/system values as JSON |
 | `/api/sensor/{value}` | Read a sensor or system value (see supported keys below) |
 
 ### Supported sensor keys for `/api/sensor/{value}`

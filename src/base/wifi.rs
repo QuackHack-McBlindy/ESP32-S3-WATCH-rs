@@ -33,6 +33,7 @@ pub async fn connection(mut controller: esp_radio::wifi::WifiController<'static>
                     conn_info.channel
                 );
                 fail_count = 0; // RESET FAILURE COUNTER ON SUCESS
+                crate::store!(crate::state::WIFI_CONNECTED, true);
 
                 // SUCCESS! MONITOR RSSI & WAIT FOR DISCONNECT
                 loop {
@@ -62,7 +63,6 @@ pub async fn connection(mut controller: esp_radio::wifi::WifiController<'static>
                     }
                 }
                 // WHEN DISCONNECTED WE BREAK TO THE OUTER LOOP & TRY SAME CREDS AGAIN
-                // (no index change)
             }
             Err(e) => {
                 defmt::info!("WiFi - ❌ CONNECTION FAILED for {}: {:?}", ssid, e);

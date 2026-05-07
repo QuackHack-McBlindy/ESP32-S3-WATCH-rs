@@ -98,6 +98,7 @@ macro_rules! init_u32 {
     };
 }
 
+
 // INIT_I8
 // USAGE:
 // init_i8!(SOME_SIGNED_VALUE, -10);

@@ -11,6 +11,7 @@ services:
     container_name: esp32s3-watch
     devices: # enter your serial port
       - "/dev/ttyACM0:/dev/ttyACM0"
+      #- "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_1C:DB:D4:7A:EE:F4-if00:/dev/ttyACM0"
     environment:
       - CARGO_UNSTABLE_BUILD_STD=core
     env_file:

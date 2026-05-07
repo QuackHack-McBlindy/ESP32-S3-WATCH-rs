@@ -1,1 +1,1 @@
-pub mod qwackify;
+pub mod media_player;

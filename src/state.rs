@@ -1,4 +1,4 @@
-// STATE MACHINE INITIATION
+// STATE MACHINE 
 // CHIP GPIO, CONFIGURATION DEFINITIONS
 // ++ ME STATE TRACKER
 // ++ INIT ATOMIC VARIABLES
@@ -17,9 +17,14 @@ crate::init_bool!(ME_DND, false);
 pub const FW_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const PROJECT_NAME: &str = env!("CARGO_PKG_NAME");
 
+// TIME RELATED
+crate::init_u32!(UPTIME_SECS, 0);      // SECONDS SINCE BOOT
+crate::init_u32!(CURRENT_TIME_SECS, 0);// SECONDS SINCE MIDNIGHT
+
 // NETWORK
 crate::init_u32!(CURRENT_IP, 0);
 crate::init_i32!(RSSI, 0);
+crate::init_bool!(WIFI_CONNECTED, false);
 
 // WIFI - COMPILE-TIME ENVIRONMENT VARIABLES
 pub const SSID: &str = env!("WIFI_SSID");
@@ -32,8 +37,6 @@ pub const WIFI_CREDENTIALS: &[(&str, &str)] = &[
     (env!("WIFI_SSID3"), env!("WIFI_PASSWORD3")),
 ];
 
-// WIFI - STATE
-crate::init_bool!(WIFI_CONNECTED, false);
 
 // BACKEND
 pub const BACKEND_TCP_HOST: &str = env!("BACKEND_TCP_HOST");
@@ -54,6 +57,7 @@ pub const LCD_ROW_OFFSET: u16 = 0;
 
 crate::init_bool!(DISPLAY_STATE, false);
 crate::init_u8!(DISPLAY_BRIGHTNESS, 70);
+crate::init_u32!(DISPLAY_TIMEOUT_SECS, 20);
 
 // I2C Bus
 crate::init_u8!(I2C_SDA, 15);
@@ -104,9 +108,9 @@ crate::init_u8!(LCD_TE, 13);
 crate::init_u8!(I2S_MCLK, 16);
 crate::init_u8!(I2S_SCLK, 41);  // BCLK
 crate::init_u8!(I2S_LRCK, 45);  // WS
-crate::init_u8!(I2S_DSDIN, 40); // DAC data in (speaker)
-crate::init_u8!(I2S_ASDOUT, 42);// ADC data out (microphone)
-crate::init_u8!(PA_CTRL, 46);   // Power amplifier enable
+crate::init_u8!(I2S_DSDIN, 40); // DAC DATA IN (SPEAKER)
+crate::init_u8!(I2S_ASDOUT, 42);// ADC DATA OUT (MICROPHONE)
+crate::init_u8!(PA_CTRL, 46);   // POWER AMPLIFIER ENABLE
 
 // I2S AUDIO CONFIG
 pub const I2S_SAMPLE_RATE: u32 = 16000;

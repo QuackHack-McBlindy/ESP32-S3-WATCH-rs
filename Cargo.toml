@@ -1,6 +1,6 @@
 [package]
 name = "ESP32-S3-WATCH"
-version = "0.1.2"
+version = "0.1.3"
 description = "Bare Metal (no_std + alloc) firmware for `WaveShare ESP32-S3-Touch-AMOLED-2.06` using `esp-hal` as Hardware Abstraction Layer and `embassy` as Async runtime. Firmware is mainly focused on accessibility using voice assistance."
 edition = "2024"
 
@@ -29,9 +29,9 @@ es8311 = "0.1.0"
 # AXP2101 - POWER MANAGEMENT UNIT
 #axp2101 = { path = "vendor/axp2101" }
 # TINYAPI - SETUP GET API ROUTES 
-tinyapi = "0.1.7"
+tinyapi = "0.1.12"
 # BARELY-FUZZY - LEVENSTEIN + TRIGRAM
-#barely-fuzzy = { path = "./vendor/barely-fuzzy", default-features = false, features = ["alloc"] }
+barely-fuzzy = { version = "0.1.0", features = ["alloc"] }
 
 # ESP ECOSYSTEM
 esp-hal = { version = "1.1.0-rc.0", features = ["defmt", "esp32s3", "unstable"] }
@@ -57,8 +57,7 @@ embedded-graphics-core = "0.4"
 # BLUETOOTH
 bt-hci = "0.6.0"
 # SD CARD
-embedded-sdmmc = "0.8"
-
+embedded-sdmmc = "0.9.0"
 
 # EMBEDDED HAL
 embedded-io = { version = "0.7.1", features = ["defmt"] }
@@ -122,7 +121,10 @@ heapless = "0.8"
 # Math
 micromath = "2.1.0"
 libm = "0.2"
+nanomp3 = { version = "0.1.1", default-features = false }
 
+[patch.crates-io]
+embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sdmmc-rs", branch = "develop" }
 
 [profile.dev]
 opt-level = "s"

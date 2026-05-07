@@ -4,9 +4,10 @@ version = 4
 
 [[package]]
 name = "ESP32-S3-WATCH"
-version = "0.1.1"
+version = "0.1.3"
 dependencies = [
  "axp2101-embedded",
+ "barely-fuzzy",
  "bt-hci 0.6.0",
  "critical-section",
  "defmt 1.0.1",
@@ -36,6 +37,7 @@ dependencies = [
  "heapless 0.8.0",
  "libm",
  "micromath",
+ "nanomp3",
  "rand_core 0.6.4",
  "smoltcp 0.12.0",
  "static_cell",
@@ -69,6 +71,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c583acf993cf4245c4acb0a2cc2ab1f9cc097de73411bb6d3647ff6af2b1013d"
 
 [[package]]
+name = "arbitrary-int"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "993a810118f8f37e9c4411c86f1c4c940a09a7ab34b7bf2d88d06f50c553fab7"
+
+[[package]]
 name = "autocfg"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -90,10 +98,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b7e4c2464d97fe331d41de9d5db0def0a96f4d823b8b32a2efd503578988973"
 
 [[package]]
+name = "barely-fuzzy"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a78c8178656b64a112a5e91987ea0639bddb832df7d901ede6db07b861527ad0"
+
+[[package]]
 name = "base64"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
+
+[[package]]
+name = "bitbybit"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71d2a3353d70ac1091a33cbf31fc7e77b19091538a7e306e3740712af19807ca"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
 
 [[package]]
 name = "bitfield"
@@ -811,14 +836,18 @@ dependencies = [
 
 [[package]]
 name = "embedded-sdmmc"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1132a10f327a9dff9d0629124e8b26cb2b3a930ab3dfedbadd295c107955e92"
+version = "0.9.0"
+source = "git+https://github.com/rust-embedded-community/embedded-sdmmc-rs?branch=develop#c7231ddb3dfe9a67c76f15d150d4b42a0d0c9f70"
 dependencies = [
+ "arbitrary-int",
+ "bitbybit",
+ "bitflags 2.11.1",
  "byteorder",
  "embedded-hal 1.0.0",
- "heapless 0.8.0",
+ "embedded-io 0.7.1",
+ "heapless 0.9.3",
  "log",
+ "thiserror",
 ]
 
 [[package]]
@@ -1751,6 +1780,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3c8dda44ff03a2f238717214da50f65d5a53b45cd213a7370424ffdb6fae815"
 
 [[package]]
+name = "nanomp3"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f69bdf7e634dc76798adc292ebd4f6e8e125cde6843a264fe398c52c3f7e8541"
+
+[[package]]
 name = "nb"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2280,9 +2315,9 @@ dependencies = [
 
 [[package]]
 name = "tinyapi"
-version = "0.1.7"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2d765b3b3cc8c296c9bf98951cc5b4e404ebaf2be503b26be202ec81075266a"
+checksum = "2f39a37abfe0ce3dec5a7818891994cd1dd6d03f835dd23f66a49972593d0b30"
 dependencies = [
  "critical-section",
  "defmt 1.0.1",
