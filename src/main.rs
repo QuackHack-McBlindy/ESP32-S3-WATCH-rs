@@ -92,11 +92,8 @@ async fn display_task(
     mut fb: crate::components::framebuffer::Framebuffer,
     mut display: crate::components::co5300::Co5300Display<'static>,
 ) {
-    // INIT
-    defmt::debug!("display task started");
-    display.set_brightness(0xFF);
     // START WITH THE SCREEN OFF - WAKE IT BY SAYING: 
-    // `yo bitch` (YOUR WAKE WORD)
+    // `YO BITCH` (YOUR WAKE WORD)
     display.display_off();
 
     // STATE VARIABLES 
@@ -192,17 +189,49 @@ async fn display_task(
 }
 
 
+pub fn set_speaker_volume(volume: u8) {
+    let volume = volume.min(100);
+    crate::store!(crate::state::SPEAKER_VOLUME, volume);
+    critical_section::with(|cs| {
+        let mut bus = crate::I2C_BUS.borrow_ref_mut(cs);
+        let mut codec = crate::ES8311.borrow_ref_mut(cs);
+
+        if let (Some(i2c), Some(es8311)) = (bus.as_mut(), codec.as_mut()) {
+            defmt::info!("🔊 Volume set to {}%", volume);
+            let _ = es8311.volume_set(i2c, volume, None);
+        }
+    });
+}
+
+pub fn set_mic_gain(percent: u8) {
+    let percent = percent.min(100);
+    crate::store!(crate::state::MIC_VOLUME, percent);
+    // 0  % === -95 dB
+    // 100% === +32 dB
+    let db = -95.0 + (127.0 * percent as f32 / 100.0);
+    let db_i8 = db as i8;
+
+    critical_section::with(|cs| {
+        let mut bus = crate::I2C_BUS.borrow_ref_mut(cs);
+        let mut codec = crate::ES7210.borrow_ref_mut(cs);
+
+        if let (Some(i2c), Some(es7210)) = (bus.as_mut(), codec.as_mut()) {
+            defmt::info!("🎙️ Gain set to {}%", percent);
+            let _ = es7210.gain_set(i2c, db_i8);
+        }
+    });
+}
+
 // MAIN
 #[allow(clippy::large_stack_frames)]
 #[esp_rtos::main]
 async fn main(spawner: embassy_executor::Spawner) -> ! {
-    // QUACKHACK-MCBLINDY ALWAYS UNDERCLOCKS!
-    // IT GIVES MORE FOR LESS!
+    // I ALWAYS UNDERCLOCK EVERYTHING
+    // IT ALMOST ALWAYS GIVES MORE FOR LESS!
     // HERE WE BOOT AT MAX (240MHZ)
-    // SINCE WE CAN CONTROL CLOCKS AT RUN-TIME LATER
+    // SINCE WE CAN CONTROL CLOCKS AT RUNTIME LATER
     let config = esp_hal::Config::default().with_cpu_clock(esp_hal::clock::CpuClock::max());
     let peripherals = esp_hal::init(config);
-
 
     // ALLOCATE PSRAM
     esp_alloc::psram_allocator!(peripherals.PSRAM, esp_hal::psram);
@@ -219,13 +248,13 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     // TRACK TIME SINCE BOOT FOR UPTIME CALCULATION
     let boot_time = embassy_time::Instant::now();
 
-    // POWER BUTTON (RIGHT SIDE - DOWN BUTTON)
+    // POWER BUTTON (LOWER RIGHT SIDE BUTTON)
     let button_power = esp_hal::gpio::Input::new(
         peripherals.GPIO10,
         esp_hal::gpio::InputConfig::default().with_pull(esp_hal::gpio::Pull::Up)
     );
 
-    // BOOT BUTTON (RIGHT SIDE - UPPER BUTTON)
+    // BOOT BUTTON (UPPER RIGHT SIDE BUTTON)
     let button_boot = esp_hal::gpio::Input::new(
         peripherals.GPIO0,
         esp_hal::gpio::InputConfig::default().with_pull(esp_hal::gpio::Pull::Up)
@@ -311,8 +340,8 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
             tdm_enable: false,
         };
         match es7210.config_codec(i2c_bus, &codec_cfg) {
-            Ok(()) => defmt::info!("ES7210 Successful initialization"),
-            Err(e) => defmt::info!("ES7210 init failed: {:?}", defmt::Debug2Format(&e)),
+            Ok(()) => defmt::info!("ES7210  Successful initialization"),
+            Err(e) => defmt::info!("ES7210 INIT FAILED: {:?}", defmt::Debug2Format(&e)),
         }
         if let Err(e) = es7210.gain_set(i2c_bus, 20) {
             defmt::info!("ES7210 volume set failed: {:?}", defmt::Debug2Format(&e));
@@ -344,10 +373,10 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
             resolution,
             &mut delay,
         ) {
-            Ok(()) => defmt::info!("ES8311 Successful initialization"),
-            Err(e) => defmt::info!("ES8311 init failed: {:?}", defmt::Debug2Format(&e)),
+            Ok(()) => defmt::info!("ES8311  Successful initialization"),
+            Err(e) => defmt::info!("ES8311 INIT FAILED: {:?}", defmt::Debug2Format(&e)),
         }
-        let _ = es8311.volume_set(i2c_bus, 60, None);
+        let _ = es8311.volume_set(i2c_bus, 55, None);
         let _ = es8311.mute(i2c_bus, false);
 
         let mut rtc = crate::components::pcf85063a::Pcf85063aRtc::new(i2c_bus);
@@ -362,10 +391,13 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
         // GPIO38 IS THE FT3168 INT LINE HELD HIGH ON BY PULL-UP, PULLED LOW BY THE CONTROLLER
         // WHEN A FINGER IS ON THE SCREEN WE USE IT BOTH FOR LEVEL CHECKS & AS AN ASYNC WAKE SOURCE
         let mut _touch_int = esp_hal::gpio::Input::new(peripherals.GPIO38, esp_hal::gpio::InputConfig::default().with_pull(esp_hal::gpio::Pull::Up));
-        touch_rst.set_low(); delay.delay_millis(10); touch_rst.set_high(); delay.delay_millis(50);
+        touch_rst.set_low();
+        delay.delay_millis(10);
+        touch_rst.set_high();
+        delay.delay_millis(50);
         let mut touch = crate::components::ft3168::Ft3168Touch::new(i2c_bus);
         let _ = touch.init();
-        defmt::info!("FT3168 Successful initialization");
+        defmt::info!("FT3168  Successful initialization");
    
         // STORE THE DRIVER OBJECTS GLOBALLY FOR LATER USE
         ES7210.borrow_ref_mut(cs).replace(es7210);
@@ -398,11 +430,11 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     // TEARING EFFECT OUTPUT ON CO5300 (TE PIN = GPIO13)
     // COMMAND 0x35 === TEARON, PARAM 0x00 === VBlank ONLY
     let _te_pin = esp_hal::gpio::Input::new(peripherals.GPIO13, esp_hal::gpio::InputConfig::default());
-    defmt::info!("CO5300 Successful initialization!");
+    defmt::info!("CO5300  Successful initialization");
 
     // FRAMEBUFFER PSRAM
     let mut fb = crate::components::framebuffer::Framebuffer::new();
-    fb.clear_color(embedded_graphics::pixelcolor::Rgb565::new(0, 255, 0)); // GREEN
+    fb.clear_color(embedded_graphics::pixelcolor::Rgb565::new(0, 0, 0)); // BLACK
     fb.flush(&mut display);
     
     display.set_brightness(0xFF);
@@ -417,7 +449,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
 
     // SYNC RTC CLOCK TO NTP TIME
     match crate::components::pcf85063a::ntp_sync(&stack).await {
-        Ok(()) => defmt::info!("NTP syncronization successful"),
+        Ok(()) => defmt::info!("PCF85063AA Successful syncronization"),
         Err(e) => defmt::warn!("NTP sync failed: {}", e),
     }
 
@@ -425,7 +457,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     // CREATE RX & TX DMA BUFFERS
     let (_rx_buffer, rx_descriptors, tx_buffer, tx_descriptors) = esp_hal::dma_buffers!(crate::state::I2S_BUFFER_SIZE);
 
-    // CONFIGURE THE I2S INSTANCE
+    // CONFIGURE THE I2S PERIPHERAL
     // (I LIKE TO BE EXPLICIT)
     let i2s = esp_hal::i2s::master::I2s::new(
         peripherals.I2S0,
@@ -476,6 +508,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     // INIT API ROUTES
     crate::base::api::init_routes().await;
 
+    // PRINT BOOT
     defmt::info!("╬═══════════════════════════════╬");
     defmt::info!("╬ STARTED {} v{} ╬",
         crate::state::PROJECT_NAME,
@@ -508,12 +541,12 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     // IT'S NOW SAFE TO CRANK UP THE AMP
     // (WITHOUT LOAD POPPING NOISE)
     amp.set_high();
-    delay_s!(3);
+    delay_s!(2);
     
     // PLAY BOOT SOUND
     yo_esp::play_ding().await;
-
-         
+ 
+    
     // MAIN LOOP
     loop { // GET BATTERY STATUS
         let (percent, voltage_mv, charging) = critical_section::with(|cs| {
