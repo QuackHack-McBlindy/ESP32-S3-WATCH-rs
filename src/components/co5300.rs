@@ -5,17 +5,21 @@
 use crate::components::qspi_bus::QspiBus;
 
 // INTERNAL FLAGS
-static SHOULD_WAKE: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
-static SHOULD_SLEEP: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
-static FLASH_ON: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
-
+crate::init_bool!(SHOULD_WAKE, false);
+crate::init_bool!(SHOULD_SLEEP, false);
+crate::init_bool!(FLASH_ON, false);
 
 // CO5300 COMMANDS
+// SOFTWARE RESET
 const CMD_SWRESET: u8 = 0x01;
 const CMD_SLPOUT: u8 = 0x11;
-const CMD_INVOFF: u8 = 0x20;
+// INVERT COLORS
 const CMD_INVON: u8 = 0x21;
+// TURN OFF INVERT COLORSS
+const CMD_INVOFF: u8 = 0x20;
+// TURNS OFF DISPLAY
 const CMD_DISPOFF: u8 = 0x28;
+// TURNS ON DISPLAY
 const CMD_DISPON: u8 = 0x29;
 const CMD_CASET: u8 = 0x2A;
 const CMD_PASET: u8 = 0x2B;
@@ -140,22 +144,25 @@ impl<'d> Co5300Display<'d> {
         &mut self.bus
     }
 
-    /// SET DISPLAY BRIGHTNESS
-    // 0x00 === OFF,
-    // 0xD0 === DEFAULT,
-    // 0xFF === MAX
+    /// SET DISPLAY BRIGHTNESS - ACCEPTS ANY u8 VALUE (0–255)
+    // BYTE === (PERCENTAGE * 255) / 100
+    // 0% = 0x00
+    // 10% ≈ 0x1A (26)
+    // 20% ≈ 0x33 (51)
+    // 30% = 0x4D (77)
+    // 40% = 0x66 (102)
+    // 50% = 0x80 (128)
+    // 60% = 0x99 (153)
+    // 70% = 0xB3 (179)
+    // 80% = 0xCC (204)
+    // 90% = 0xE6 (230)
+    // 100% = 0xFF (255)
     pub fn set_brightness(&mut self, brightness: u8) {
         self.bus.write_c8d8(CMD_BRIGHTNESS, brightness);
     }
 
-    pub fn brightness_percent(&mut self, percent: u8) {
-        let percent = percent.clamp(0, 100);
-        let brightness = (percent as u16 * 255 / 100) as u8;
-        self.set_brightness(brightness);
-    }
-
-    /// TURN DISPPLAY ON (EXIT SLEEP + DISPLAY ON)
-    /// MIPI DCS ORDER: SLPOUT -> 120MS -> DISPON -> 20MS
+    // TURN DISPPLAY ON (EXIT SLEEP + DISPLAY ON)
+    // MIPI DCS ORDER: SLPOUT -> 120MS -> DISPON -> 20MS
     pub fn display_on(&mut self) {
         self.bus.write_command(CMD_SLPOUT);
         self.delay.delay_millis(SLPOUT_DELAY_MS);
@@ -325,24 +332,24 @@ impl embedded_graphics_core::draw_target::DrawTarget for Co5300Display<'_> {
 
 /// CALL WHEN WAKE WORD IS DETECTED.
 pub fn wake_up() {
-    SHOULD_SLEEP.store(false, core::sync::atomic::Ordering::Relaxed);
-    SHOULD_WAKE.store(true, core::sync::atomic::Ordering::Relaxed);
+    crate::store!(SHOULD_SLEEP, false);
+    crate::store!(SHOULD_WAKE, true);
 }
 
 /// CALL WHEN SERVER STARTS TRANSCRIPTION.
 pub fn start_flash() {
-    FLASH_ON.store(true, core::sync::atomic::Ordering::Relaxed);
+    crate::store!(FLASH_ON, true);
 }
 
 /// CALL WHEN TRANSCRIPTION IS DONE.
 pub fn stop_flash() {
-    FLASH_ON.store(false, core::sync::atomic::Ordering::Relaxed);
+    crate::store!(FLASH_ON, false);
 }
 
 /// CALL WHEN VOICE SESSION ENDS.
 pub fn sleep_now() {
-    SHOULD_WAKE.store(false, core::sync::atomic::Ordering::Relaxed);
-    SHOULD_SLEEP.store(true, core::sync::atomic::Ordering::Relaxed);
+    crate::store!(SHOULD_WAKE, false);
+    crate::store!(SHOULD_SLEEP, true);
 }
 
 // FUNCTIONS USED BY THE DISPLAY TASK TO READ FLAGS
@@ -363,5 +370,5 @@ pub fn consume_sleep() -> bool {
 }
 
 pub fn is_flashing() -> bool {
-    FLASH_ON.load(core::sync::atomic::Ordering::Relaxed)
+    crate::load!(FLASH_ON)
 }

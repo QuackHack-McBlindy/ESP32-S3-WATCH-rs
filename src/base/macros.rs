@@ -1,5 +1,26 @@
 // BASE/MACROS
-// SIMPLE HELPERS
+// SIMPLE SHORTHAND HELPERS
+
+// DIRTY!
+// CALL WHEN A VISIBLE VALUE CHANGES AND A DISPLAY REDRAW IS NEEDED.
+// USAGE: `dirty!();`
+#[macro_export]
+macro_rules! dirty {
+    () => {
+        crate::state::DISPLAY_DIRTY.store(true, core::sync::atomic::Ordering::Release);
+    };
+}
+
+// IS_DIRTY!
+// CHECK IF A DISPLAY REDRAW IS NEEDED - AND RESET THE FLAG
+// RETURNS `true` IF REDRAW WAS REQUESTED SINCE LAST CHECK.
+// USAGE: `if is_dirty!() { … }`
+#[macro_export]
+macro_rules! is_dirty {
+    () => {
+        crate::state::DISPLAY_DIRTY.swap(false, core::sync::atomic::Ordering::Acquire)
+    };
+}
 
 // WAIT_MS (BLOCKING)
 // USAGE:
@@ -62,7 +83,7 @@ macro_rules! toggle {
     ($var:expr) => {{
         let prev = $var.fetch_xor(true, ::core::sync::atomic::Ordering::Relaxed);
         let new = !prev;
-        defmt::info!("toggled {} to {}", stringify!($var), new);
+        defmt::debug!("toggled {} to {}", stringify!($var), new);
         new
     }};
 }

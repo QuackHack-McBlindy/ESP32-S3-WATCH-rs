@@ -1,9 +1,9 @@
-//! COMPONENTS/STORAGE
-//! MICRO SECURE DIGITAL CARD DRIVER (SPI)
-//! FILESYSTEM: FAT32
-//! PROVIDES EVERYTHING NEEDED FOR:
-//! SD CARD INIT ++ FUZZY SEARCHING FILES ON THE SD CARD FOR PLAYBACK 
-//! ALL OPERATIONS ARE PERFORMED INSIDE A CRITICAL SECTION TO AVOID LIFETIME COMPLICATIONS.
+// COMPONENTS/STORAGE
+// MICRO SECURE DIGITAL CARD DRIVER (SPI)
+// FILESYSTEM: FAT32
+// PROVIDES EVERYTHING NEEDED FOR:
+// SD CARD INIT ++ FUZZY SEARCHING FILES ON THE SD CARD FOR EASY VOICE COMMAND PLAYBACK  (be drunk & speak japanese, it's all good)
+// ALL OPERATIONS ARE PERFORMED INSIDE A CRITICAL SECTION TO AVOID LIFETIME COMPLICATIONS.
 
 extern crate alloc;
 use alloc::format;
@@ -48,7 +48,7 @@ pub fn init(card: SdCardType) {
 
 // FUZZY SEARCH SONGS 
 pub fn search_song(query: &str) -> Option<(String, u8)> {
-    defmt::info!("fuzzy searching song: {}", query);
+    defmt::info!("🪄 fuzzy searching: {}", query);
 
     critical_section::with(|cs| {
         let mut guard = VOL_MGR.borrow(cs).borrow_mut();
@@ -56,10 +56,10 @@ pub fn search_song(query: &str) -> Option<(String, u8)> {
         defmt::debug!("VolumeManager obtained");
 
         let volume = vol_mgr.open_raw_volume(embedded_sdmmc::VolumeIdx(0)).ok()?;
-        defmt::info!("Volume opened");
+        defmt::debug!("Volume opened");
 
         let root_dir = vol_mgr.open_root_dir(volume).ok()?;
-        defmt::info!("Root directory opened");
+        defmt::debug!("Root directory opened");
 
         let music_dir = vol_mgr.open_dir(root_dir, "Music").ok()?;
         defmt::info!("📁 /Music directory opened");
@@ -81,30 +81,134 @@ pub fn search_song(query: &str) -> Option<(String, u8)> {
                         format!("{}", base.trim())
                     } else { format!("{}.{}", base.trim(), ext.trim()) }
                 };
-                defmt::info!("found file: {}", full.as_str());
+                // PRINT EACH FOUND FILE ++ FILE SIZE
+                let size = entry.size;
+                defmt::info!("📁 found file: {} ({} bytes)", full.as_str(), size);
                 names.push(full.as_bytes().to_vec());
             }
             core::ops::ControlFlow::Continue(())
         });
-        defmt::info!("Total files found: {}", names.len());
+        defmt::debug!("Total files found: {}", names.len());
 
         let _ = vol_mgr.close_dir(music_dir);
         let _ = vol_mgr.close_dir(root_dir);
+        let _ = vol_mgr.close_volume(volume);
 
         if names.is_empty() {
             defmt::warn!("⚠️ No files in /Music");
             return None;
         }
 
+        // TWO-STAGE FILTER FUZZY MATCHING
+        // PROVIDED BY `BARELY_FUZZY`
+        // TAKES ALL FILES AND COMPARES TO INPUT & RETURNS HIGHEST SCORED FILES
         let candidates: Vec<&[u8]> = names.iter().map(|v| v.as_slice()).collect();
         let (best_bytes, score) = barely_fuzzy::best_fuz(query.as_bytes(), &candidates, 5);
         defmt::debug!("best score: {}, best bytes: {:?}", score, best_bytes);
-
 
         let best_name = core::str::from_utf8(best_bytes).ok()?.to_string();
         defmt::info!("🏆 Best match: {} ({}%)", best_name.as_str(), score);
         Some((best_name, score))
  
+    })
+}
+
+// GET THE SIZE OF A FILE (BYTES) BY FULL PATH
+pub fn file_size(path: &str) -> Result<u32, SdError> {
+    defmt::debug!("file_size: path='{}'", path);
+
+    critical_section::with(|cs| {
+        let mut guard = VOL_MGR.borrow(cs).borrow_mut();
+        let vol_mgr = match guard.as_mut() {
+            Some(v) => v,
+            None => {
+                defmt::error!("file_size: VolumeManager not initialized");
+                return Err(SdError::NotInitialized);
+            }
+        };
+        defmt::debug!("file_size: VolumeManager obtained");
+
+        let volume = match vol_mgr.open_raw_volume(embedded_sdmmc::VolumeIdx(0)) {
+            Ok(v) => v,
+            Err(e) => {
+                defmt::error!("file_size: open_raw_volume failed");
+                return Err(SdError::Volume);
+            }
+        };
+        defmt::debug!("file_size: volume opened");
+
+        let root_dir = match vol_mgr.open_root_dir(volume) {
+            Ok(d) => d,
+            Err(e) => {
+                defmt::error!("file_size: open_root_dir failed");
+                return Err(SdError::RootDir);
+            }
+        };
+        defmt::debug!("file_size: root dir opened");
+
+        let (dir_name, file_name) = split_path(path);
+        defmt::debug!("file_size: dir='{}', file='{}'", dir_name.as_str(), file_name.as_str());
+
+        let dir = if dir_name.is_empty() {
+            root_dir
+        } else {
+            match vol_mgr.open_dir(root_dir, dir_name.as_str()) {
+                Ok(d) => {
+                    defmt::debug!("file_size: subdir '{}' opened", dir_name);
+                    d
+                },
+                Err(e) => {
+                    defmt::error!("file_size: open_dir '{}' failed", dir_name.as_str());
+                    return Err(SdError::Directory);
+                }
+            }
+        };
+
+        let mut lfn_storage = [0u8; 256];
+        let mut lfn_buf = embedded_sdmmc::LfnBuffer::new(&mut lfn_storage);
+
+        let mut found_size: Option<u32> = None;
+
+        let iter_result = vol_mgr.iterate_dir_lfn(dir, &mut lfn_buf, |entry, lfn| {
+            if !entry.attributes.is_directory() {
+                let full = if let Some(name) = lfn {
+                    name.to_string()
+                } else {
+                    let base = core::str::from_utf8(&entry.name.base_name()).unwrap_or("");
+                    let ext = core::str::from_utf8(&entry.name.extension()).unwrap_or("");
+                    if ext.is_empty() {
+                        alloc::format!("{}", base.trim())
+                    } else {
+                        alloc::format!("{}.{}", base.trim(), ext.trim())
+                    }
+                };
+                defmt::trace!("file_size: checking entry '{}'", full);
+                if full.eq_ignore_ascii_case(&file_name) {
+                    found_size = Some(entry.size);
+                    defmt::debug!("file_size: match! size={}", entry.size);
+                    return core::ops::ControlFlow::Break(());
+                }
+            }
+            core::ops::ControlFlow::Continue(())
+        });
+
+        match iter_result {
+            Ok(_) => defmt::debug!("file_size: dir iteration completed with no break"),
+            Err(e) => defmt::error!("file_size: iterate_dir_lfn error"),
+        }
+
+        // CLOSING TIME
+        let _ = vol_mgr.close_dir(dir);
+        let _ = vol_mgr.close_dir(root_dir);
+        let _ = vol_mgr.close_volume(volume);
+
+        match found_size {
+            Some(s) => Ok(s),
+            None => {
+                defmt::warn!("file_size: file not found in directory");
+                Err(SdError::File)
+            }
+        }
     })
 }
 
@@ -128,14 +232,17 @@ pub fn read_file(path: &str, buffer: &mut [u8]) -> Result<usize, SdError> {
         let bytes_read = vol_mgr.read(file, buffer).map_err(|_| SdError::Read)?;
         let _ = vol_mgr.close_dir(dir);
         let _ = vol_mgr.close_dir(root_dir);
+        let _ = vol_mgr.close_volume(volume);
         Ok(bytes_read)
     })
 }
 
 
-
 // STREAMING FILE READER – HOLDS THE VOLUME MANAGER LOCK WHILE THE FILE IS OPEN.
 pub struct SdFileStream {
+    volume: embedded_sdmmc::RawVolume,
+    //root_dir: embedded_sdmmc::RawDirectory,
+    dir: embedded_sdmmc::RawDirectory,
     raw_file: embedded_sdmmc::RawFile,
 }
 
@@ -146,10 +253,29 @@ impl SdFileStream {
         critical_section::with(|cs| {
             let mut guard = VOL_MGR.borrow(cs).borrow_mut();
             let vol_mgr = guard.as_mut().ok_or(SdError::NotInitialized)?;
-            vol_mgr.read(self.raw_file, buf).map_err(|_| SdError::Read)
+
+            let n = vol_mgr
+                .read(self.raw_file, buf)
+                .map_err(|_| SdError::Read)?;
+
+            Ok(n)
         })
     }
 }
+
+impl Drop for SdFileStream {
+    fn drop(&mut self) {
+        critical_section::with(|cs| {
+            let mut guard = VOL_MGR.borrow(cs).borrow_mut();
+            if let Some(vol_mgr) = guard.as_mut() {
+                let _ = vol_mgr.close_file(self.raw_file);
+                let _ = vol_mgr.close_dir(self.dir);
+                let _ = vol_mgr.close_volume(self.volume);
+            }
+        });
+    }
+}
+
 
 // OPENS A FILE FOR STREAMING READS
 // TO AVOID HAVING TO LOAD ENTIRE FILE INTO MEMORY
@@ -161,28 +287,33 @@ pub fn open_file_stream(path: &str) -> Result<SdFileStream, SdError> {
         let volume = vol_mgr
             .open_raw_volume(embedded_sdmmc::VolumeIdx(0))
             .map_err(|_| SdError::Volume)?;
+
         let root_dir = vol_mgr
             .open_root_dir(volume)
             .map_err(|_| SdError::RootDir)?;
 
         let (dir_name, file_name) = split_path(path);
+
         let dir = if dir_name.is_empty() {
-            root_dir
+            root_dir // use root_dir directly; it will be closed in Drop
         } else {
-            vol_mgr
+            // open subdirectory, then immediately close the root handle
+            let sub_dir = vol_mgr
                 .open_dir(root_dir, dir_name.as_str())
-                .map_err(|_| SdError::Directory)?
+                .map_err(|_| SdError::Directory)?;
+            vol_mgr.close_dir(root_dir).ok(); // root_dir is no longer needed
+            sub_dir
         };
 
         let raw_file = vol_mgr
             .open_long_name_file_in_dir(dir, &file_name, embedded_sdmmc::Mode::ReadOnly)
             .map_err(|_| SdError::File)?;
 
-        // DIRECTORIES NO LONGER NEEDED
-        let _ = vol_mgr.close_dir(dir);
-        let _ = vol_mgr.close_dir(root_dir);
-
-        Ok(SdFileStream { raw_file })
+        Ok(SdFileStream {
+            volume,
+            dir,
+            raw_file,
+        })
     })
 }
 

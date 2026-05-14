@@ -192,7 +192,7 @@ fn draw_colon(
     .ok();
 }
 
-// ---------- PUBLIC DRAW FUNCTION ----------
+// PUBLIC DRAW FUNCTION
 pub fn draw(
     fb: &mut impl embedded_graphics::draw_target::DrawTarget<
         Color = embedded_graphics::pixelcolor::Rgb565,
@@ -217,7 +217,7 @@ pub fn draw(
     > as embedded_graphics::prelude::Drawable>::draw(&styled_clear, fb)
     .ok();
 
-    // --- DYNAMIC SIZING (FIT 95% OF SCREEN WIDTH) ---
+    // DYNAMIC SIZING (FIT 95% OF SCREEN WIDTH)
     let total_desired = (w as f32 * 0.95) as i32;
     let digit_w = total_desired * 2 / 9;
     let stroke = digit_w / 6;
@@ -231,7 +231,7 @@ pub fn draw(
         return;
     }
 
-    // --- POSITIONING ---
+    // POSITIONING
     // BLOCK = H1 H2 : M1 M2
     let block_w = 4 * digit_w + 3 * colon_w + 4 * gap;
     let start_x = (w - block_w) / 2;

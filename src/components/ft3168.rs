@@ -2,9 +2,6 @@
 // FT3168 TOUCH CONTROLLER DRIVER
 
 use embedded_hal::i2c::I2c;
-use critical_section;
-
-use crate::I2C_BUS;
 
 const FT3168_ADDR: u8 = 0x38;
 
@@ -189,73 +186,5 @@ impl<I: I2c> Ft3168Touch<I> {
             0x0C => Gesture::LongPress,
             other => Gesture::Unknown(other),
         })
-    }
-}
-
-// TASK THAT SIGNALS & SENDS TOUCH EVENTS TO GUI TASK
-#[embassy_executor::task]
-pub async fn touch_task() {
-    let mut tracking = false;
-    let mut start_x = 0u16;
-    let mut start_y = 0u16;
-    let mut last_x = 0u16;
-    let mut last_y = 0u16;
-
-    loop {
-        let point = critical_section::with(|cs| {
-            let mut bus_ref = I2C_BUS.borrow_ref_mut(cs);
-            let i2c_bus = bus_ref.as_mut()?;
-            let mut touch = Ft3168Touch::new(i2c_bus);
-            touch.read().ok().flatten() // NOW `Option<TouchPoint>`
-        });
-
-        match point {
-            Some(tp) => {
-                if !tracking {        
-                    // TOUCH DETECTED – WAKE UP DISPLAY (IF OFF)
-                    if !crate::load!(crate::state::DISPLAY_STATE) {
-                        crate::components::co5300::wake_up();
-                        crate::store!(crate::state::DISPLAY_STATE, true);
-                    }
-                
-                    tracking = true;
-                    start_x = tp.x;
-                    start_y = tp.y;
-                }
-                last_x = tp.x;
-                last_y = tp.y;
-                defmt::debug!("👆 X={} Y={}", tp.x, tp.y);
-            }
-            None => {
-                if tracking {
-                    tracking = false;
-                    let dx = last_x as i32 - start_x as i32;
-                    let dy = last_y as i32 - start_y as i32;
-                    let abs_dx = dx.unsigned_abs();
-                    let abs_dy = dy.unsigned_abs();
-
-                    let direction = if abs_dx < 30 && abs_dy < 30 {
-                        SwipeDirection::Tap
-                    } else if abs_dx > abs_dy * 3 / 2 {
-                        if dx > 0 { SwipeDirection::Right } else { SwipeDirection::Left }
-                    } else if abs_dy > abs_dx * 3 / 2 {
-                        if dy > 0 { SwipeDirection::Down } else { SwipeDirection::Up }
-                    } else {
-                        SwipeDirection::Tap
-                    };
-
-                    let event = match direction {
-                        SwipeDirection::Tap => crate::gui::pages::TouchEvent::Tap { x: start_x, y: start_y },
-                        dir => crate::gui::pages::TouchEvent::Swipe(dir, last_x, last_y),
-                    };
-                    crate::gui::pages::TOUCH_EVENTS.signal(event);
-
-                    defmt::debug!("Swipe {:?}", direction);
-                    defmt::debug!("  Start: ({},{}) -> End: ({},{})",
-                        start_x, start_y, last_x, last_y);
-                }
-            }
-        }
-        embassy_time::Timer::after(embassy_time::Duration::from_millis(50)).await;
     }
 }

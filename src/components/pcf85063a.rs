@@ -1,5 +1,6 @@
 // COMPONENTS/PCF85063A
 // PCF85063A - REAL TIME CLOCK DRIVER
+// WITH NTP SYNC
 
 use embedded_hal::i2c::I2c;
 

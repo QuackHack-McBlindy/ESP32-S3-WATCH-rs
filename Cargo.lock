@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "ESP32-S3-WATCH"
-version = "0.1.3"
+version = "0.2.0"
 dependencies = [
  "axp2101-embedded",
  "barely-fuzzy",
@@ -23,6 +23,7 @@ dependencies = [
  "embedded-hal-bus",
  "embedded-io 0.7.1",
  "embedded-io-async 0.7.0",
+ "embedded-png",
  "embedded-sdmmc",
  "embedded-storage",
  "es7210",
@@ -832,6 +833,14 @@ checksum = "eb5a1bd585135d302f8f6d7de329310938093da6271b37a6c94b8798795c0c6d"
 dependencies = [
  "embedded-io-async 0.7.0",
  "embedded-nal",
+]
+
+[[package]]
+name = "embedded-png"
+version = "0.1.0"
+dependencies = [
+ "embedded-graphics",
+ "minipng",
 ]
 
 [[package]]
@@ -1778,6 +1787,12 @@ name = "micromath"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3c8dda44ff03a2f238717214da50f65d5a53b45cd213a7370424ffdb6fae815"
+
+[[package]]
+name = "minipng"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de129e6db0b4c69f59cde83990a5844989a93bbd23ab2dfbe48e68740a59327c"
 
 [[package]]
 name = "nanomp3"

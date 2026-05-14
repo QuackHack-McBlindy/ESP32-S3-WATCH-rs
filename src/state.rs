@@ -3,15 +3,12 @@
 // ++ ME STATE TRACKER
 // ++ INIT ATOMIC VARIABLES
 
-
 // ME (QUACKHACK-MCBLINDY)
 // TRACK ME - I MIGHT BE LOST
 crate::init_bool!(ME_HOME, true);
 crate::init_bool!(ME_SLEEPING, false);
 crate::init_bool!(ME_DND, false);
-// init_str!(ME_ROOM, "livingroom");
-// init_...!(ME_LONGITUDE, ...);
-// init_...!(ME_LATITUDE, ...);
+
 
 // THIS FIRMWARE
 pub const FW_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -42,7 +39,7 @@ pub const WIFI_CREDENTIALS: &[(&str, &str)] = &[
 pub const BACKEND_TCP_HOST: &str = env!("BACKEND_TCP_HOST");
 pub const BACKEND_TCP_PORT_STR: &str = env!("BACKEND_TCP_PORT");
 
-// QSPI DISPLAY (CO5300)
+// DISPLAY (CO5300)
 pub const LCD_SDIO0: u8 = 4;
 pub const LCD_SDIO1: u8 = 5;
 pub const LCD_SDIO2: u8 = 6;
@@ -56,6 +53,7 @@ pub const LCD_COL_OFFSET: u16 = 22;
 pub const LCD_ROW_OFFSET: u16 = 0;
 
 crate::init_bool!(DISPLAY_STATE, false);
+crate::init_bool!(DISPLAY_DIRTY, false);
 crate::init_u8!(DISPLAY_BRIGHTNESS, 70);
 crate::init_u32!(DISPLAY_TIMEOUT_SECS, 20);
 
@@ -79,6 +77,7 @@ crate::init_u32!(BATTERY_VOLTAGE, 0);
 crate::init_bool!(BATTERY_CHARGING, false);
 crate::init_bool!(BATTERY_NEED_CHARGING, false);
 crate::init_bool!(BATTERY_FULL, false);
+crate::init_bool!(BATTERY_USB_CONNECTED, false);
 // init_..!(BATTERY_VOLTAGE_MV, 0);
 
 // IMU (QMI8658)
@@ -116,7 +115,8 @@ crate::init_u8!(PA_CTRL, 46);   // POWER AMPLIFIER ENABLE
 pub const I2S_SAMPLE_RATE: u32 = 16000;
 pub const I2S_SAMPLE_COUNT: usize = 256;
 pub const I2S_BIT_WIDTH: u8 = 16;
-pub const I2S_BUFFER_SIZE: usize = 4 * 4092;
+//pub const I2S_BUFFER_SIZE: usize = 4 * 4092;
+pub const I2S_BUFFER_SIZE: usize = 4 * 16368;
 pub const I2S_DATA_FORMAT: esp_hal::i2s::master::DataFormat = esp_hal::i2s::master::DataFormat::Data16Channel16;
 pub const I2S_ENDIANNESS: esp_hal::i2s::master::Endianness = esp_hal::i2s::master::Endianness::LittleEndian;
 pub const I2S_CHANNELS: esp_hal::i2s::master::Channels = esp_hal::i2s::master::Channels::STEREO;
@@ -134,6 +134,31 @@ crate::init_u8!(SPEAKER_VOLUME, 58);
 crate::init_bool!(MIC_MUTED, false);
 crate::init_bool!(SPEAKER_MUTED, false);
 crate::init_bool!(MIC_ACTIVE, true);
+
+// MEDIA
+crate::init_bool!(MEDIA_IS_PLAYING, false);
+crate::init_u8!(MEDIA_COMMAND, 0);
+
+#[derive(Clone, Copy, defmt::Format, PartialEq)]
+#[repr(u8)]
+pub enum MediaCommand {
+    None = 0,
+    Prev = 1,
+    PlayPause = 2,
+    Next = 3,
+}
+
+impl From<u8> for MediaCommand {
+    fn from(val: u8) -> Self {
+        match val {
+            1 => MediaCommand::Prev,
+            2 => MediaCommand::PlayPause,
+            3 => MediaCommand::Next,
+            _ => MediaCommand::None,
+        }
+    }
+}
+
 
 // BUTTONS
 crate::init_u8!(BOOT_BUTTON, 0);

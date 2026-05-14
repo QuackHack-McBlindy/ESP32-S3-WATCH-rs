@@ -7,15 +7,18 @@
 
 > [!NOTE]
 > **🧑‍🦯 Personal project!**  
-> **As I am blind this firmware is mostly focused on accessibility of the voice assistant functionality of the watch.**  
-> **It will have touch and a graphical user interface -- but it will be BIG.**  
+> **As I am blind this firmware is mostly focused on accessibility through the voice assistant functionality of the watch.**  
+> **It has touch and a graphical user interface -- but it is BIG.**  
 <br>
 
-**Bare Metal** *(no_std)* **ESP32-S3** firmware written in Rust without the `esp-idf` API.   
-Designed to be used as a personal voice assistant watch with media player and a notification system.     
+**Bare Metal** *(no_std)* **ESP32-S3** firmware written in Rust using the `esp-hal` as hardware abstraction layer, without the `ESP-IDF` API.   
+Designed to be used as a personal voice assistant watch with **EXTENSIVE** custom voice commands & a media player, web server and **much much more!**    
+
+*“Source code is the best documentation.“*   
+
 
 Its up to [yo](https://github.com/QuackHack-McBlindy/yo) to write your own voice commands.  
-as a reference: I have **57** [yo](https://github.com/QuackHack-McBlindy/dotfiles) scripts meaning my watch has **272684913** phrases available as voice commands.  
+My watch can execute **57** different [scripts](https://github.com/QuackHack-McBlindy/dotfiles), and understands **272684913**  different phrases as voice commands **-- with a average processing time of 2,713 ms per command**.  
 
     
 
@@ -40,7 +43,7 @@ as a reference: I have **57** [yo](https://github.com/QuackHack-McBlindy/dotfile
 - [Graphical User Interface](#graphical-user-interface)
 - [Applications](#applications)
 - [Power Management/Optimization](#power-management--optimizations)
-- [Sponsor](#sponsor)
+- [♥️ Sponsor](#sponsor)
 - [License](#license)
 
 <br><br>  
@@ -51,12 +54,12 @@ as a reference: I have **57** [yo](https://github.com/QuackHack-McBlindy/dotfile
 #### **Voice Assistant Video**  
 
 
-Turn up your volume before hitting play.  
+Turn up volume & hit play.  
 
 [Play demo video](https://github.com/user-attachments/assets/357bf377-0874-4f42-8d15-3532c31bc813)
 
   
-**Yes, it's fast!** *(TTS is bottleneck)*  
+**Yes, it's fast!** *(TTS generation is the bottleneck)*  
 
 #### **Pictures**
 
@@ -68,6 +71,10 @@ Turn up your volume before hitting play.
   <img src="resource/battery.jpeg" alt="Battery" width="148">
 </a>
 
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/media_player.jpeg">
+  <img src="resource/media_player.jpeg" alt="Media Player" width="148">
+</a>
+
 
 <br><br>
 
@@ -76,7 +83,11 @@ Turn up your volume before hitting play.
 
 `ESP32-S3-WATCH-rs` is a `no_std` Rust firmware for the ESP32-S3 based smartwatch. The primary goal is to create a fully voice‑controlled assistant that is highly accessible for blind and visually impaired users. All interactions can be performed via voice, and the graphical interface is designed with large, high‑contrast elements.  
 
-The watch streams audio to a companion backend service called [`yo`](https://github.com/QuackHack-McBlindy/yo), which handles wake word detection, speech‑to‑text, intent recognition and execution, and text‑to‑speech synthesis. The watch itself streams microphone audio, serves TCP server for audio streaming to the speaker, manages notifications, plays media, and serves a web frontend for configuration and status which also can be used as a GET API.  
+The watch streams audio to a companion backend service called [`yo`](https://github.com/QuackHack-McBlindy/yo), which handles wake word detection, speech‑to‑text, intent recognition and execution, and text‑to‑speech synthesis. The watch itself streams microphone audio, serves TCP server for audio streaming to the speaker, manages notifications, plays media, and serves a web frontend for web based media playback in the browser called **Qwackify**, which is like Jellyfin on steroids - but much more good looking and served directly from a watch.  
+The watch also has an internal API serving GET endpoints for controlling options and media playback -- playing local music straight from the micro SD card is as easy as:  
+**From your desktop:** `curl http://<ESP_IP>:80/api/media/search/songs/mysong`.  
+**From the watch:** tap the boot button to open the app launcher, swipe down to the app `Qwackify` and double tap it to open then press play.  
+**Using your voice, say:** `yo bitch! play the duck song`.  
 
 <br><br>
 
@@ -90,6 +101,7 @@ Modular API and using only fully qualified paths everywhere, should help keep th
 📂 ESP32-S3-WATCH-rs
 ├── 📂 applications
 │   ├── 📄 media_player.rs
+│   ├── 📄 smart_home.rs
 │   └── 📄 mod.rs
 ├── 📂 base
 │   ├── 📂 routes
@@ -104,7 +116,7 @@ Modular API and using only fully qualified paths everywhere, should help keep th
 │   ├── 📄 axp2101.rs
 │   ├── 📄 buttons.rs
 │   ├── 📄 co5300.rs
-│   ├── 📄 CpuClock.rs
+│   ├── 📄 frequency.rs
 │   ├── 📄 framebuffer.rs
 │   ├── 📄 ft3168.rs
 │   ├── 📄 pcf85063a.rs
@@ -113,8 +125,11 @@ Modular API and using only fully qualified paths everywhere, should help keep th
 │   ├── 📄 storage.rs
 │   └── 📄 mod.rs
 ├── 📂 gui
+│   ├── 📄 animations.rs
+│   ├── 📄 apps.rs
 │   ├── 📄 battery.rs
-│   ├── 📄 homescreen.rs
+│   ├── 📄 house.rs
+│   ├── 📄 media_player.rs
 │   ├── 📄 pages.rs
 │   ├── 📄 rolex.rs
 │   ├── 📄 time.rs
@@ -131,28 +146,28 @@ Modular API and using only fully qualified paths everywhere, should help keep th
 
 
 Project roadmap - watch as `watch` grows and evolves along the road.  
-Extend with more crazy ideas as they pop up.  
+Extend with more crazy ideas as they pop up. `ESP32-S3-WATCH-rs` is still under active development, and will be as long as this list is not complete.  
+**Feel free to contribute with any cool ideas you might have for the watch!! - Nothing is impossible!**  
 
 - [x] Async & WiFi
 - [x] Handle multiple SSID/WiFi alternatives  
-- [x] Buttons & Display (lights up on wake word detection)
+- [x] Buttons & Deep Sleep (power-save mode)
 - [x] i2s: RX Microphone  
 - [x] i2s: TX Speaker  
-- [x] i2s: Simultaneous RX & TX 
+- [x] i2s: Simultaneous RX & TX  (Full-Duplex)
 - [x] Voice Command Execution (Wake word, speech to shell command)
-- [ ] Push-to-talk feature (to save battery)
+- [ ] Push-to-talk feature (more battery effecient)
 - [x] Media Player - Stream any audio to speaker (wav, mp3, flac, mp4, ...)
 - [x] Fuzzy search & play local media from the SD card. (with downsampling) 
 - [x] Intercom `ffmpeg -f alsa -i default -f s16le -ar 16000 -ac 2 - | nc <ESP_IP> 12345`
 - [x] On-Device API
-- [x] On-Device WebServer & Web Media Player   
-- [ ] OTA (auto update from git repo?)
-- [ ] Fully voice controlled. (Change any  option at run-time) 
+- [x] On-Device WebServer & Web Media Player (with casting to Android TV)
+- [ ] Draw graphs on watch from input data 
+- [ ] Fully voice controlled. (Change any setting at run-time) 
 - [x] Graphical User Interface
-- [ ] QR codes.
-- [ ] Power optimised for battery operation  
-- [x] Broadcasting all TTS-messages to every ESP32 device.   
-- [ ] Phone calls/text message (Bluetooth)
+- [ ] Generate on-device QR codes. (need TLS for secure secret sharing via QR)
+- [x] Broadcasting all text-to-speech to every ESP32 device.   
+- [ ] Phone calls/text message (Bluetooth HandsFree Protocol)
 - [x] Backend: `yo`
 
 `yo` is not only the backend server service but it's also where you will write your voice commands.  
@@ -175,7 +190,7 @@ This is where your `ESP32-S3` microphone audio will be streamed.
 ❄️ Using flakes (TODO)
 </strong></summary>
 
-*not yet...*
+*sorry, not yet...*
 
 </details>
 
@@ -245,7 +260,7 @@ $ docker compose up
 ### **Frontend**  
 
 If you prefer to handle your media manually in the web browser - good news!  
-Your `ESP32-S3` is now serving a fully featured media player that can cast to your TV's and has built-in transcoding.  
+Your `ESP32-S3` is now serving a fully featured media player that can cast to your TV's and has built-in transcoding (transcoding on backend).  
 You can go ahead and visit your device at:  
 
 `http://<ESP_IP>:80/`  
@@ -282,6 +297,7 @@ curl http://<ESP_IP>:80/api/settings/display/brightness/75
 | `/api/settings/power/state/{value}` | Control device power: `on`, `off`, or `toggle` (default) |
 | `/api/settings/display/state/{value}` | Control display on/off: `on`, `off`, or `toggle` |
 | `/api/settings/display/brightness/{value}` | Set backlight brightness (0–80%). `{value}` as integer percent |
+| `/api/settings/display/page/{value}` | Change display page (page number). `{value}` as integer page number |
 | `/api/settings/mic/volume/{value}` | Set microphone gain (0–100%). Returns current volume |
 | `/api/settings/mic/mute/{value}` | Mute/unmute mic: `1`/`on`/`mute`, `0`/`off`/`unmute`, or `toggle` |
 | `/api/settings/speaker/volume/{value}` | Set speaker volume (0–100%) |
@@ -358,7 +374,7 @@ Instead the flow looks like:
 
 <!-- MY_VOICE_COMMANDS_START -->
 
-My voice assistant can currently execuute **57** voice scripts.   
+My voice assistant can currently execute **57** voice scripts.   
 That is **2503** regex patterns and makes a total of **272684913** understandable phrases available as voice commands.  
 
 | Command Syntax | Description | Example | Voice Ready |
@@ -576,15 +592,31 @@ Audio codecs (ES7210/ES8311) are configured via I2C, and are used as slaves.
 
 ## **Graphical User Interface**
 
+The GUI is currently pretty basic. It has a default "home" page with a digital clock, and when swiping left it will display battery status.  
+Pressing the boot button will display the application launcher which let's the user scroll smoothly through the applications, double tapping an image will open the app. 
+A upwards swipe gesture will close the open application and display the digital clock again.  
+
+
 <br><br>
 
 
 ## **Applications**  
 
+**Qwackify** - a media player with play/pause & previous/next track buttons, title & progress bar.  
+  
+**House** - Smart Home application with some quick action buttons etc, most of the home control is done by voice anyway.  
+  
+Will extend with more applications as I think of any useful ones.  
+
 <br><br>
 
 
 ## **Power Management & Optimizations**  
+
+The watch is basically running the CPU on max all the time because of all the heavy lifting.   
+Battery optimization will be done after some more usage.  
+The biggest battery saving win you can do right now is holding down the power button for 5 seconds when it's not going to be actively used - which will put the device into deep sleep.  
+Touching the display alternatively pushing power button again will wake it up again.   
 
 
 <br><br>

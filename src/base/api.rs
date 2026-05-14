@@ -5,25 +5,17 @@
 // EXAMPLE USAGE: (SET DISPLAY BRIGHTNESS TO `70%` USING `curl`) 
 // `curl 192.168.1.11:80/api/settings/display/brightness/70`
 
-//fn media_handler(req: Request<'_>) -> Response {
-//    let action = req.param("action").unwrap_or("none");
-//    info!("Media action: {}", action);
-//    let status = crate::apps::media::handle_action(action);
-//    Response::text(status)
-//}
 
-
-// FUNCTION TO INIT EDPOINTS
+// FUNCTION TO INIT ENDPOINTS
 pub async fn init_routes() {
     // SERVE THE WEB FRONTEND
     tinyapi::register_route("/", crate::base::routes::index::index_handler).await;   
     tinyapi::register_route("/favicon.ico", crate::base::routes::index::favicon_handler).await;    
-    tinyapi::register_route("/static/js/script.js", crate::base::routes::index::js_handler).await;    
 
     // LIST AVAILABLE ENDPOINTS
     tinyapi::register_route("/api", crate::base::routes::api::list::handle).await;
 
-    // /API/MEDIA/SEARCH/SONGS/FUZZY_SONGS
+    // /API/MEDIA/SEARCH/SONGS/{query}
     tinyapi::register_route("/api/media/search/songs/{value}", crate::base::routes::api::media::search::songs::fuzzy_songs::fuzzy_songs_handler).await;    
 
     // /API/SETTINGS/MIC    
@@ -36,9 +28,10 @@ pub async fn init_routes() {
 
     // /API/SETTINGS/DISPLAY
     tinyapi::register_route("/api/settings/display/brightness/{value}", crate::base::routes::api::settings::display::brightness::brightness_handler).await;    
-  
-  
 
+    tinyapi::register_route("/api/settings/display/page/{value}", crate::base::routes::api::settings::display::page::page_handler).await;    
+    
+  
     // RETURNS ALL SENSOR DATA
     tinyapi::register_route("/api/sensors", crate::base::routes::api::sensor::handle_sensors).await;
     // RETURNS SPECIFIC SENSOR DATA

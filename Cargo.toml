@@ -1,6 +1,6 @@
 [package]
 name = "ESP32-S3-WATCH"
-version = "0.1.4"
+version = "0.2.0"
 description = "Bare Metal (no_std + alloc) firmware for `WaveShare ESP32-S3-Touch-AMOLED-2.06` using `esp-hal` as Hardware Abstraction Layer and `embassy` as Async runtime. Firmware is mainly focused on accessibility using voice assistance."
 edition = "2024"
 
@@ -22,21 +22,18 @@ categories = [
 [dependencies]
 # QUACKHACK-MCBLINDY CRATES
 # YO-ESP - BIDIRECTIONAL I2S CONNECTION
-#yo-esp = { version = "0.1.5", features = ["sounds"] }
 yo-esp = { path = "vendor/yo-esp", features = ["sounds"] }
-
+embedded-png = { path = "vendor/embedded-png" }
 # ES7210/ES8311 AUDIO CODECS
 es7210 = "0.1.0"
 es8311 = "0.1.0"
-# AXP2101 - POWER MANAGEMENT UNIT
-#axp2101 = { path = "vendor/axp2101" }
 # TINYAPI - SETUP GET API ROUTES 
 tinyapi = "0.1.12"
 # BARELY-FUZZY - LEVENSTEIN + TRIGRAM
 barely-fuzzy = { version = "0.1.0", features = ["alloc"] }
 
 # ESP ECOSYSTEM
-esp-hal = { version = "1.1.0-rc.0", features = ["defmt", "esp32s3", "unstable"] }
+esp-hal = { version = "1.1.0", features = ["defmt", "esp32s3", "unstable"] }
 esp-rtos = { version = "0.3.0", features = [
   "defmt",
   "embassy",

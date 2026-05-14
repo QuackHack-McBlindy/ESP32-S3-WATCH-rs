@@ -129,7 +129,7 @@ pub async fn init(
     stack.wait_link_up().await;
     stack.wait_config_up().await;
 
-    // 5: GRAB IPV4 AND STORE IT
+    // 5: GRAB IPV4 AND STORE IT YO!
     let ip = loop {
         if let Some(config) = stack.config_v4() {
             break config.address;
