@@ -11,11 +11,13 @@
 > **It has touch and a graphical user interface -- but it is BIG.**  
 <br>
 
-**Bare Metal** *(no_std)* **ESP32-S3** firmware written in Rust using the `esp-hal` as hardware abstraction layer, without the `ESP-IDF` API.   
+**Bare Metal** *(no_std)* **ESP32-S3** firmware written in Rust using the `esp-hal` as hardware abstraction layer.  
+Without the `ESP-IDF` API.   
 Designed to be used as a personal voice assistant watch with **EXTENSIVE** custom voice commands & a media player, web server and **much much more!**    
 
 *“Source code is the best documentation.“*   
 
+<br><br>
 
 Its up to [yo](https://github.com/QuackHack-McBlindy/yo) to write your own voice commands.  
 My watch can execute **57** different [scripts](https://github.com/QuackHack-McBlindy/dotfiles), and understands **272684913**  different phrases as voice commands **-- with a average processing time of 2,713 ms per command**.  
@@ -83,10 +85,11 @@ Turn up volume & hit play.
 
 `ESP32-S3-WATCH-rs` is a `no_std` Rust firmware for the ESP32-S3 based smartwatch. The primary goal is to create a fully voice‑controlled assistant that is highly accessible for blind and visually impaired users. All interactions can be performed via voice, and the graphical interface is designed with large, high‑contrast elements.  
 
-The watch streams audio to a companion backend service called [`yo`](https://github.com/QuackHack-McBlindy/yo), which handles wake word detection, speech‑to‑text, intent recognition and execution, and text‑to‑speech synthesis. The watch itself streams microphone audio, serves TCP server for audio streaming to the speaker, manages notifications, plays media, and serves a web frontend for web based media playback in the browser called **Qwackify**, which is like Jellyfin on steroids - but much more good looking and served directly from a watch.  
-The watch also has an internal API serving GET endpoints for controlling options and media playback -- playing local music straight from the micro SD card is as easy as:  
-**From your desktop:** `curl http://<ESP_IP>:80/api/media/search/songs/mysong`.  
-**From the watch:** tap the boot button to open the app launcher, swipe down to the app `Qwackify` and double tap it to open then press play.  
+The watch streams audio to a companion backend service called [`yo`](https://github.com/QuackHack-McBlindy/yo), which handles wake word detection, speech‑to‑text, intent recognition and execution, and text‑to‑speech synthesis. The watch itself streams microphone audio, serves TCP server for audio streaming to the speaker, manages notifications, plays media, and serves a web frontend for web based media playback in the browser called **Qwackify**, which is like Jellyfin on steroids - but much more good looking and served directly from a watch.  <br>
+
+The watch also has an internal API serving GET endpoints for controlling options and media playback -- playing local music straight from the micro SD card is as easy as:  <br>
+**From your desktop:** `curl http://<ESP_IP>:80/api/media/search/songs/mysong`.  <br>
+**From the watch:** tap the boot button to open the app launcher, swipe down to the app `Qwackify` and double tap it to open then press play.  <br>
 **Using your voice, say:** `yo bitch! play the duck song`.  
 
 <br><br>
