@@ -63,13 +63,23 @@ Turn up volume & hit play.
   
 **Yes, it's fast!** *(TTS generation is the bottleneck)*  
 
+
+<br>
+
+[Play demo video of media player](https://github.com/user-attachments/assets/6880aa18-7a8a-437c-bca0-b99c03bb1682)
+
+**Sorry, i blame blindness for the quality of thje video/pictures.**
+Will update with new when someone with better camera can help.  
+
+<br>
+
 #### **Pictures**
 
 <a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/time.jpeg">
   <img src="resource/time.jpeg" alt="Clock" width="148">
 </a>
 
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/battery.jpeg">
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/battery2.jpeg">
   <img src="resource/battery.jpeg" alt="Battery" width="148">
 </a>
 
@@ -647,5 +657,6 @@ Touching the display alternatively pushing power button again will wake it up ag
 
 This project is licensed under the terms of the MIT license.  
 See the `LICENSE` file in the repository for full details.  
+
 
 
