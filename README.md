@@ -98,6 +98,10 @@ Turn up volume & hit play.
   <img src="resource/demo/qwackify.jpeg" alt="Media Player -Qwackify" width="148">
 </a>
 
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings.jpeg">
+  <img src="resource/demo/settomgs.jpeg" alt="Settings page" width="148">
+</a>
+
 <a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/calling.jpeg">
   <img src="resource/demo/calling.jpeg" alt="Dad is calling" width="148">
 </a>
@@ -106,6 +110,8 @@ Turn up volume & hit play.
   
 **Sorry, I have been told I am the master of blurry pictures.**  
 *(how would I know...)*  
+
+There is a video demo from the web-based Qwackify too down below.  
 
 <br><br>
 
@@ -407,11 +413,11 @@ Or check what is on the SD card from browser, visit: `http://<ESP_IP>/api/shell/
 You should see something like:  
 
 ```
- .
-├──  Music
+📂 .
+├── 📂 Music
 │   ├── 🎵 ducksong-1.mp3  
 │   └── 🎵 ducksong-gangstarap.mp3
-└──  share
+└── 📂 share
     └──  image.jpeg
 ```
 
