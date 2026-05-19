@@ -24,7 +24,7 @@ Be sure to check out the demo usage videos/pictures down below.
 <br><br>
 
 Its up to [yo](https://github.com/QuackHack-McBlindy/yo) to write your own voice commands.  
-My watch can execute **57** different [scripts](https://github.com/QuackHack-McBlindy/dotfiles), and understands **272684913**  different phrases as voice commands **-- with a average processing time of 2,713 ms per command**.  
+My watch can execute **57** different [scripts](https://github.com/QuackHack-McBlindy/dotfiles), and understands **272684913**  different phrases as voice commands **-- with a average processing time of 2,72 ms per command**.  
   
 The top-tier performance come from a **deterministic** voice architecture and smart caching inside the voice intents.  
   
