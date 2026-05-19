@@ -99,7 +99,7 @@ Turn up volume & hit play.
 </a>
 
 <a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings.jpeg">
-  <img src="resource/demo/settomgs.jpeg" alt="Settings page" width="148">
+  <img src="resource/demo/settings.jpeg" alt="Settings page" width="148">
 </a>
 
 <a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/calling.jpeg">
