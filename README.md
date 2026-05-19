@@ -88,7 +88,7 @@ Turn up volume & hit play.
 
 <a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/charging.jpeg">
   <img src="resource/demo/charging.jpeg" alt="Charging" width="148">
-</a>
+</a> <br>
 
 <a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/launcher.jpeg">
   <img src="resource/demo/launcher.jpeg" alt="Launcher" width="148">
