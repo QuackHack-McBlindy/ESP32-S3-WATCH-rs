@@ -11,40 +11,39 @@ pub fn draw(
     type Rgb = embedded_graphics::pixelcolor::Rgb565;
     type Point = embedded_graphics::geometry::Point;
     type Size = embedded_graphics::geometry::Size;
-    type MonoFont<'a> = embedded_graphics::mono_font::MonoTextStyle<'a, Rgb>;
-    type Text<'a> = embedded_graphics::text::Text<'a, MonoFont<'a>>;
 
-    // COLOR CONSTANTS TRAITS
-    let white = <Rgb as embedded_graphics::pixelcolor::RgbColor>::WHITE;
-    let cyan = <Rgb as embedded_graphics::pixelcolor::RgbColor>::CYAN;
-    let gray = <Rgb as embedded_graphics::pixelcolor::WebColors>::CSS_GRAY;
+    // LOAD TTF FONT FROM ASSETS
+    let bold_font = rusttype::Font::try_from_bytes(crate::base::assets::ROBOTO_BOLD).unwrap();
+    let regular_font = rusttype::Font::try_from_bytes(crate::base::assets::ROBOTO_REGULAR).unwrap();
 
-    // LOAD PNGs
-    let prev_png = embedded_png::Png::load_from_bytes(include_bytes!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/assets/apps/media_player/previous.png"
-    )))
-    .ok();
-    let play_png = embedded_png::Png::load_from_bytes(include_bytes!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/assets/apps/media_player/play.png"
-    )))
-    .ok();
-    let pause_png = embedded_png::Png::load_from_bytes(include_bytes!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/assets/apps/media_player/pause.png"
-    )))
-    .ok();
-    let next_png = embedded_png::Png::load_from_bytes(include_bytes!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/assets/apps/media_player/next.png"
-    )))
-    .ok();
-    let album_png = embedded_png::Png::load_from_bytes(include_bytes!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/assets/apps/qwackify.png"
-    )))
-    .ok();
+    // COLOR CONSTANTS (FROM CENTRALIZED MODULE)
+    let white = crate::gui::colors::WHITE;
+    let cyan = crate::gui::colors::CYAN;
+    let gray = crate::gui::colors::GRAY;
+    let dark_gray = crate::gui::colors::DARK_GRAY;
+
+    // CREATE TEXT STYLES WITH DIFFERENT SIZES
+    let header_style = embedded_ttf::FontTextStyleBuilder::new(bold_font.clone())
+        .font_size(62)
+        .text_color(cyan)
+        .build();
+
+    let title_style = embedded_ttf::FontTextStyleBuilder::new(bold_font.clone())
+        .font_size(48)
+        .text_color(white)
+        .build();
+
+    let time_style = embedded_ttf::FontTextStyleBuilder::new(regular_font)
+        .font_size(16)
+        .text_color(gray)
+        .build();
+
+    // LOAD PNGs FROM ASSETS
+    let prev_png = embedded_png::Png::load_from_bytes(crate::base::assets::MEDIA_PREVIOUS_PNG).ok();
+    let play_png = embedded_png::Png::load_from_bytes(crate::base::assets::MEDIA_PLAY_PNG).ok();
+    let pause_png = embedded_png::Png::load_from_bytes(crate::base::assets::MEDIA_PAUSE_PNG).ok();
+    let next_png = embedded_png::Png::load_from_bytes(crate::base::assets::MEDIA_NEXT_PNG).ok();
+    let album_png = embedded_png::Png::load_from_bytes(crate::base::assets::QWACKIFY_PNG).ok();
 
     let is_playing = crate::load!(crate::state::MEDIA_IS_PLAYING);
     let play_pause_png = if is_playing { &pause_png } else { &play_png };
@@ -66,23 +65,21 @@ pub fn draw(
     let w = bbox.size.width as i32;
     let h = bbox.size.height as i32;
 
-    // FONTS
-    let huge_font = MonoFont::new(&embedded_graphics::mono_font::ascii::FONT_10X20, white);
-    let big_font = huge_font;
-    let small_font = MonoFont::new(&embedded_graphics::mono_font::ascii::FONT_10X20, gray);
-    let cyan_font = MonoFont::new(&embedded_graphics::mono_font::ascii::FONT_10X20, cyan);
     let center_align = embedded_graphics::text::TextStyleBuilder::new()
         .alignment(embedded_graphics::text::Alignment::Center)
         .build();
 
-    //  HEADER "QWACKIFY"
+    // HEADER "QWACKIFY"
     let header_text = embedded_graphics::text::Text::with_text_style(
         "QWACKIFY",
-        Point::new(w / 2, 40),
-        cyan_font,
+        Point::new(w / 2, 20),
+        header_style,
         center_align,
     );
-    <Text as embedded_graphics::Drawable>::draw(&header_text, fb).ok();
+    <embedded_graphics::text::Text<
+        embedded_ttf::FontTextStyle<embedded_graphics::pixelcolor::Rgb565>,
+    > as embedded_graphics::Drawable>::draw(&header_text, fb)
+        .ok();
 
     // QWACKIFY ICON (or album art if you wish)
     if let Some(album) = &album_png {
@@ -118,16 +115,19 @@ pub fn draw(
         }
     }
 
-    //  TRACK TITLE
+    // TRACK TITLE
     if let Some(ref title) = title_opt {
         let display = if title.len() > 25 { &title[..25] } else { title };
         let title_text = embedded_graphics::text::Text::with_text_style(
             display,
-            Point::new(w / 2, 270),
-            big_font,
+            Point::new(w / 2, 220),
+            title_style,
             center_align,
         );
-        <Text as embedded_graphics::Drawable>::draw(&title_text, fb).ok();
+        <embedded_graphics::text::Text<
+            embedded_ttf::FontTextStyle<embedded_graphics::pixelcolor::Rgb565>,
+        > as embedded_graphics::Drawable>::draw(&title_text, fb)
+            .ok();
     }
 
     // PROGRESS BAR
@@ -140,9 +140,9 @@ pub fn draw(
         Point::new(bar_x, bar_y),
         Size::new(bar_width as u32, bar_height as u32),
     );
-    let bg_styled = <embedded_graphics::primitives::Rectangle as embedded_graphics::primitives::Primitive>::into_styled(
+    let bg_styled = <embedded_graphics::primitives::Rectangle as embedded_graphics::prelude::Primitive>::into_styled(
         bg_rect,
-        embedded_graphics::primitives::PrimitiveStyle::with_fill(Rgb::new(64, 64, 64)),
+        embedded_graphics::primitives::PrimitiveStyle::with_fill(dark_gray),
     );
     <embedded_graphics::primitives::Styled<
         embedded_graphics::primitives::Rectangle,
@@ -164,7 +164,7 @@ pub fn draw(
             ),
             Size::new(6, 6),
         );
-        let fill_styled = <embedded_graphics::primitives::RoundedRectangle as embedded_graphics::primitives::Primitive>::into_styled(
+        let fill_styled = <embedded_graphics::primitives::RoundedRectangle as embedded_graphics::prelude::Primitive>::into_styled(
             fill_rect,
             embedded_graphics::primitives::PrimitiveStyle::with_fill(cyan),
         );
@@ -183,18 +183,24 @@ pub fn draw(
     let cur_text = embedded_graphics::text::Text::with_text_style(
         &cur_str,
         Point::new(bar_x, time_y),
-        small_font,
+        time_style.clone(),
         center_align,
     );
-    <Text as embedded_graphics::Drawable>::draw(&cur_text, fb).ok();
+    <embedded_graphics::text::Text<
+        embedded_ttf::FontTextStyle<embedded_graphics::pixelcolor::Rgb565>,
+    > as embedded_graphics::Drawable>::draw(&cur_text, fb)
+        .ok();
 
     let tot_text = embedded_graphics::text::Text::with_text_style(
         &tot_str,
         Point::new(bar_x + bar_width, time_y),
-        small_font,
+        time_style,
         center_align,
     );
-    <Text as embedded_graphics::Drawable>::draw(&tot_text, fb).ok();
+    <embedded_graphics::text::Text<
+        embedded_ttf::FontTextStyle<embedded_graphics::pixelcolor::Rgb565>,
+    > as embedded_graphics::Drawable>::draw(&tot_text, fb)
+        .ok();
 
     // CONTROL BUTTONS
     let scale = 7;

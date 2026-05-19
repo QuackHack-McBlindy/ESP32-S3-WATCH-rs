@@ -9,12 +9,8 @@ pub fn draw(
         Color = embedded_graphics::pixelcolor::Rgb565,
     >,
 ) {
-    // DEFINE COLORS
-    let white = embedded_graphics::pixelcolor::Rgb565::new(255, 255, 255);
-    let black = embedded_graphics::pixelcolor::Rgb565::new(0, 0, 0);
-    let gray = embedded_graphics::pixelcolor::Rgb565::new(0x80, 0x80, 0x80);
-    let yellow = embedded_graphics::pixelcolor::Rgb565::new(0xFF, 0xFF, 0x00);
-    let cyan = embedded_graphics::pixelcolor::Rgb565::new(0x00, 0xFF, 0xFF);
+    // LOAD FONT
+    let ttf_font = rusttype::Font::try_from_bytes(crate::base::assets::ROBOTO_BOLD).unwrap();
 
     // CLEAR SCREEN
     let full_rect = embedded_graphics::primitives::Rectangle::new(
@@ -23,7 +19,7 @@ pub fn draw(
     );
     let styled_clear = <embedded_graphics::primitives::Rectangle as embedded_graphics::prelude::Primitive>::into_styled(
         full_rect,
-        embedded_graphics::primitives::PrimitiveStyle::with_fill(black),
+        embedded_graphics::primitives::PrimitiveStyle::with_fill(crate::gui::colors::BLACK),
     );
     <embedded_graphics::primitives::Styled<
         embedded_graphics::primitives::Rectangle,
@@ -32,21 +28,15 @@ pub fn draw(
     .ok();
 
     // READ GLOBAL BATTERY STATE
-    let (percent, voltage_mv, charging) = critical_section::with(|_cs| {
-        let p = crate::load!(crate::state::BATTERY_PERCENT);
-        let v = crate::load!(crate::state::BATTERY_VOLTAGE);
-        let c = crate::load!(crate::state::BATTERY_CHARGING);
-        (p, v, c)
-    });
+    let percent = crate::load!(crate::state::BATTERY_PERCENT);
+    let voltage_mv = crate::load!(crate::state::BATTERY_VOLTAGE);
+    let usb_connected = crate::load!(crate::state::BATTERY_USB_CONNECTED);
 
     // PICK FILL COLOR: CYAN WHILE CHARGING, OTHERWISE GREEN-TO-RED GRADIENT
-    let fill_color = if charging {
-        cyan
+    let fill_color = if usb_connected {
+        crate::gui::colors::CYAN
     } else {
-        // LINEAR INTERPOLATION: 100% GREEN -> 0% RED
-        let r = ((100u16 - percent as u16) * 255 / 100) as u8;
-        let g = (percent as u16 * 255 / 100) as u8;
-        embedded_graphics::pixelcolor::Rgb565::new(r, g, 0)
+        crate::gui::colors::gradient_red_green(percent)
     };
 
     // PROGRESS ARC LAYOUT – CENTERED, TAKES 70% OF SMALLEST SCREEN DIMENSION
@@ -69,7 +59,7 @@ pub fn draw(
         embedded_graphics::geometry::Angle::from_degrees(360.0),
     );
     let bg_style = embedded_graphics::primitives::PrimitiveStyleBuilder::new()
-        .stroke_color(gray)
+        .stroke_color(crate::gui::colors::GRAY)
         .stroke_width(stroke_width)
         .stroke_alignment(embedded_graphics::primitives::StrokeAlignment::Inside)
         .build();
@@ -102,66 +92,75 @@ pub fn draw(
         .ok();
     }
 
-    // CHARGING LIGHTNING BOLT (SIMPLE LINES)
-    if charging {
-        let bcx = center_x;
-        let bcy = center_y;
-        let bolt_style = embedded_graphics::primitives::PrimitiveStyle::with_stroke(yellow, 2);
-        let bolt_lines: [( (i32, i32), (i32, i32) ); 4] = [
-            ((bcx - 10, bcy - 20), (bcx + 5, bcy - 5)),
-            ((bcx + 5, bcy - 5), (bcx, bcy - 10)),
-            ((bcx - 5, bcy + 5), (bcx + 15, bcy + 20)),
-            ((bcx + 15, bcy + 20), (bcx, bcy + 10)),
-        ];
-        for &(p1, p2) in &bolt_lines {
-            let line = embedded_graphics::primitives::Line::new(
-                embedded_graphics::geometry::Point::new(p1.0, p1.1),
-                embedded_graphics::geometry::Point::new(p2.0, p2.1),
-            );
-            let styled_line = <embedded_graphics::primitives::Line as embedded_graphics::prelude::Primitive>::into_styled(
-                line,
-                bolt_style,
-            );
-            <embedded_graphics::primitives::Styled<
-                embedded_graphics::primitives::Line,
-                embedded_graphics::primitives::PrimitiveStyle<embedded_graphics::pixelcolor::Rgb565>,
-            > as embedded_graphics::prelude::Drawable>::draw(&styled_line, fb)
-            .ok();
+    // DECIDE WHETHER TO SHOW BOLT (USB CONNECTED & NOT FULL) OR PERCENTAGE TEXT
+    if usb_connected && percent < 100 {
+        // LOAD BOLT PNG FROM ASSETS
+        if let Some(bolt_png) = embedded_png::Png::load_from_bytes(crate::base::assets::BOLT_PNG).ok() {
+            let scale = 2; // BIG ENOUGH?
+            let img_w = bolt_png.width() as i32;
+            let img_h = bolt_png.height() as i32;
+            let scaled_w = img_w * scale;
+            let scaled_h = img_h * scale;
+            let x = center_x - scaled_w / 2;
+            let y = center_y - scaled_h / 2;
+
+            // DRAW SCALED BOLT
+            for src_row in 0..img_h {
+                for src_col in 0..img_w {
+                    let idx = (src_row * img_w + src_col) as usize;
+                    if let Some(color) = bolt_png.pixels()[idx] {
+                        let px = x + src_col * scale;
+                        let py = y + src_row * scale;
+                        for dy in 0..scale {
+                            for dx in 0..scale {
+                                let pixel = embedded_graphics::Pixel(
+                                    embedded_graphics::geometry::Point::new(px + dx, py + dy),
+                                    color,
+                                );
+                                <embedded_graphics::Pixel<embedded_graphics::pixelcolor::Rgb565> as embedded_graphics::Drawable>::draw(&pixel, fb).ok();
+                            }
+                        }
+                    }
+                }
+            }
         }
+    } else {
+        // PERCENTAGE TEXT – BIG CENTERED INSIDE THE ARC
+        let ttf_style = embedded_ttf::FontTextStyleBuilder::new(ttf_font)
+            .font_size(88)
+            .text_color(crate::gui::colors::WHITE)
+            .build();
+        
+        let mut pct_buf = [0u8; 4];
+        let pct_str = format_percent(&mut pct_buf, percent);
+        
+        // MANUAL CENTERING OF THE TEXT
+        let metrics = <
+            embedded_ttf::FontTextStyle<embedded_graphics::pixelcolor::Rgb565>
+            as embedded_graphics::text::renderer::TextRenderer
+        >::measure_string(
+            &ttf_style,
+            pct_str,
+            embedded_graphics::geometry::Point::zero(),
+            embedded_graphics::text::Baseline::Top,
+        );
+        let text_w = metrics.bounding_box.size.width as i32;
+        let text_h = metrics.bounding_box.size.height as i32;
+        let text_pos = embedded_graphics::geometry::Point::new(
+            center_x - text_w / 2,
+            center_y - text_h / 2,
+        );
+        
+        let pct_text = embedded_graphics::text::Text::new(pct_str, text_pos, ttf_style);
+        <
+            embedded_graphics::text::Text<
+                embedded_ttf::FontTextStyle<embedded_graphics::pixelcolor::Rgb565>,
+            > as embedded_graphics::prelude::Drawable
+        >::draw(&pct_text, fb)
+        .ok();
     }
-
-    // PERCENTAGE TEXT – PERFECTLY CENTERED INSIDE THE ARC
-    let font = embedded_graphics::mono_font::ascii::FONT_10X20;
-    let pct_style = embedded_graphics::mono_font::MonoTextStyle::new(&font, white);
-    let text_style = embedded_graphics::text::TextStyleBuilder::new()
-        .baseline(embedded_graphics::text::Baseline::Middle)
-        .alignment(embedded_graphics::text::Alignment::Center)
-        .build();
-    let mut pct_buf = [0u8; 4];
-    let pct_str = format_percent(&mut pct_buf, percent);
-    let pct_text = embedded_graphics::text::Text::with_text_style(
-        pct_str,
-        embedded_graphics::geometry::Point::new(center_x, center_y),
-        pct_style,
-        text_style,
-    );
-    <embedded_graphics::text::Text<embedded_graphics::mono_font::MonoTextStyle<embedded_graphics::pixelcolor::Rgb565>> as embedded_graphics::prelude::Drawable>::draw(&pct_text, fb).ok();
-
-    // VOLTAGE READOUT BELOW THE ARC
-    let volt_style = embedded_graphics::mono_font::MonoTextStyle::new(&font, gray);
-    let mut volt_buf = [0u8; 8];
-    let volt_str = format_voltage(&mut volt_buf, voltage_mv);
-    let volt_y = center_y + (diameter as i32 / 2) + 20;
-    let volt_text = embedded_graphics::text::Text::with_alignment(
-        volt_str,
-        embedded_graphics::geometry::Point::new(center_x, volt_y),
-        volt_style,
-        embedded_graphics::text::Alignment::Center,
-    );
-    <embedded_graphics::text::Text<embedded_graphics::mono_font::MonoTextStyle<embedded_graphics::pixelcolor::Rgb565>> as embedded_graphics::prelude::Drawable>::draw(&volt_text, fb).ok();
 }
 
-// FORMATTING HELPERS (UNCHANGED FROM ORIGINAL)
 fn format_percent<'a>(buf: &'a mut [u8; 4], pct: u8) -> &'a str {
     let mut pos = 0;
     if pct >= 100 {

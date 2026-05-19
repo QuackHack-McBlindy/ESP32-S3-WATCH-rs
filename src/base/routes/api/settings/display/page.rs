@@ -2,16 +2,9 @@
 
 // GET /API/SETTINGS/DISPLAY/PAGE/{val}
 pub fn page_handler(req: tinyapi::Request<'_>) -> tinyapi::Response {
-    let value = req.param("value").unwrap_or("?");
-    defmt::info!("Switching page to {}", value);
-
-    // CONVERT PARAM TO A VALID PAGE NUMBER
-    let page = match value.parse::<u8>() {
-        Ok(p) if p <= 4 => p,
-        _ => {
-            return tinyapi::Response::text("Invalid page number. Use 0–4.");
-        }
-    };
+    let page_str = req.param("value").unwrap_or("0");
+    let page: u8 = page_str.parse().unwrap_or(0);
+    defmt::info!("Switching page to {}", page);
 
     // SWITCH DISPLAY PAGE  – THIS TRIGGERS A REDRAW IN THE DISPLAY TASK
     crate::store!(crate::gui::pages::CURRENT_PAGE, page);

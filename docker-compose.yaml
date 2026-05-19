@@ -1,3 +1,5 @@
+# DOCKER IS USED TO PROVIDE EASY BUILD ENVIORMENT
+# WHICH CAN BE HELL TO CONFIGURE FOR BEGINNERS/NIXOS USERS
 services:
   watch:
     build:
@@ -6,17 +8,20 @@ services:
     volumes:
       - ./:/app
     image: esp-dev:esp32s3box3
-    # use: `docker exec -it esp32s3-watch /bin/bash`
-    # to jump into container for development
+    # `docker exec -it esp32s3-watch /bin/bash`
+    # TO EXEC INTO CONTAINER (for development)
     container_name: esp32s3-watch
-    devices: # enter your serial port
+    devices: # ENTER YOUR SERIAL PORT HERE
       - "/dev/ttyACM0:/dev/ttyACM0"
-      #- "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_1C:DB:D4:7A:EE:F4-if00:/dev/ttyACM0"
     environment:
       - CARGO_UNSTABLE_BUILD_STD=core
+      # OPTIONAL ENV VARS CAN BE CONFIGURED HERE
     env_file:
-      - ./.env
+      - ./.env # <- WRITE WiFi SSID/PASSWORD IN THIS FILE
+      # USE THE `.env.example` FILE AS REFERENCE
     stdin_open: true
     tty: true
+    # UNCOMMENT BELOW TO FLASH YOUR DEVICE AUTOMATICALLY AFTER THE DOCKER BUILD FINISHES
+    # CONFIGURE SERIAL PORT AND `.env` BEFORE UNCOMMENTING
     #command: bash -c "source /root/export-esp.sh && cargo clean && cargo run --release"
 

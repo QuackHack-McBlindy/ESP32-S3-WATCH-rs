@@ -1,6 +1,10 @@
 // BASE/MACROS
 // SIMPLE SHORTHAND HELPERS
 
+
+// ───────────────────────────────────────────────────────────────────────
+// DISPLAY RELATED
+
 // DIRTY!
 // CALL WHEN A VISIBLE VALUE CHANGES AND A DISPLAY REDRAW IS NEEDED.
 // USAGE: `dirty!();`
@@ -21,6 +25,10 @@ macro_rules! is_dirty {
         crate::state::DISPLAY_DIRTY.swap(false, core::sync::atomic::Ordering::Acquire)
     };
 }
+
+
+// ───────────────────────────────────────────────────────────────────────
+// DELAY RELATED
 
 // WAIT_MS (BLOCKING)
 // USAGE:
@@ -63,7 +71,8 @@ macro_rules! delay_s {
 }
 
 
-// INIT ATOMIC VARIABLES
+// ───────────────────────────────────────────────────────────────────────
+// ATOMIC VARIABLES RELATED
 
 // INIT_BOOL
 // USAGE:
@@ -162,6 +171,7 @@ macro_rules! load {
 }
 
 
+// ───────────────────────────────────────────────────────────────────────
 // TASK SPAWNER
 // USAGE: 
 // spawn!(spawner, task_name());
@@ -176,7 +186,8 @@ macro_rules! spawn {
 }
 
 
-
+// ───────────────────────────────────────────────────────────────────────
+// MK_STATIC
 #[macro_export]
 macro_rules! mk_static {
     ($t:ty, $val:expr) => {{
@@ -188,6 +199,7 @@ macro_rules! mk_static {
 }
 
 
+// STATIC_MUTEX
 #[macro_export]
 macro_rules! static_mutex {
     ($mutex_type:ty, $value:expr) => {{
@@ -198,6 +210,8 @@ macro_rules! static_mutex {
 }
 
 
+// ───────────────────────────────────────────────────────────────────────
+// ENV_DEF
 #[macro_export]
 macro_rules! env_def {
     ($name:expr, $default:expr) => {
@@ -226,6 +240,7 @@ macro_rules! gpio_output {
     }};
 }
 
+
 //macro_rules! display_brightness {
 //    ($channel:expr, $percent:expr) => {{
 //        let percent = $percent.clamp(0, 100);
@@ -233,6 +248,8 @@ macro_rules! gpio_output {
 //    }};
 //}
 
+
+// ───────────────────────────────────────────────────────────────────────
 // SCAN I2C BUS
 //defmt::info!("Scanning I2C bus on GPIO15(SDA)/GPIO14(SCL)");
 //for addr in 0x08..=0x7F {
@@ -245,3 +262,5 @@ macro_rules! gpio_output {
 //    }
 //}
 //defmt::info!("Scan complete");
+
+

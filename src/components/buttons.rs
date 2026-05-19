@@ -10,6 +10,9 @@ async fn wait_for_release(button: &mut esp_hal::gpio::Input<'_>) {
     }
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
+// BUTTON TASK
 #[embassy_executor::task]
 pub async fn buttons_task(
     boot_button: esp_hal::gpio::Input<'static>,
@@ -19,7 +22,7 @@ pub async fn buttons_task(
     let mut pwr_press_start: Option<embassy_time::Instant> = None;
 
     loop {
-        // =========================    
+        // ───────────────────────────────────────────────────────────────────────
         // BOOT BUTTON
         if boot_button.is_low() {
             // PRESSED: TODO
@@ -48,7 +51,8 @@ pub async fn buttons_task(
             }
         } else { boot_press_start = None; }
 
-        // =========================        
+
+        // ───────────────────────────────────────────────────────────────────────
         // POWER BUTTON
         if pwr_button.is_high() {
             // PRESSED: TOGGLE DISPLAY ON/OFF (IF TOUCH DISPLAY FAILS TO WAKE)

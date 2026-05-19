@@ -1,27 +1,27 @@
 //! ESP32-S3-WATCH-rs ⮞ https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs
-//! RUST BARE METAL NO_STD VOICE ASSISTANT FIRMWARE
-//! SMART WATCH BY QuackHack-McBlindy 🦆🧑‍🦯
+//!  BARE METAL RUST  - HARDWARE ABSTRACTION LAYER `esp-hal`
+//!   SMARTWATCH OS   - BY QuackHack-McBlindy 🦆🧑‍🦯
+// ───────────────────────────────────────────────────────────────────────
 //! “A powerful voice assistant can make a huge difference for blind people.”
-//! “Imagine yourself stumbling blindly across the room looking for the remote — meanwhile, I can call it using only my voice.”
+//! “Imagine yourself stumbling blindly across the room looking for the remote — meanwhile, I call it using only my voice.”
+// ───────────────────────────────────────────────────────────────────────
 
 #![no_std]
 #![no_main]
 // NOBODY TELLS ME WHAT TO DO!
 #![allow(non_snake_case)]
 #![allow(dead_code)]
+#![allow(unused)]
 #![deny(clippy::mem_forget)]
 #![deny(clippy::large_stack_frames)]
 
 // IMPORTS
 use esp_println as _;
-use defmt::{Debug2Format}; 
-// FROM HERE ON WE'LL ONLY USE FULLY QUALIFIED PATHS
-
 
 // PANIC HANDLER (defmt)
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
-    defmt::error!("Panic: {}", defmt::Debug2Format(info));
+    defmt::error!("⚠️ Panic: {}", defmt::Debug2Format(info));
     loop {}
 }
 
@@ -52,6 +52,7 @@ pub static I2C_BUS: critical_section::Mutex<core::cell::RefCell<Option<I2cBus>>>
     critical_section::Mutex::new(core::cell::RefCell::new(None));
 
 
+// ───────────────────────────────────────────────────────────────────────
 // CONSTRUCT THE VOICE HANDLER
 struct VoiceHandler;
 
@@ -89,7 +90,7 @@ impl yo_esp::CommandHandler for VoiceHandler {
     // 0x04 === FAILED COMMAND EXECUTION
     fn on_failed(&mut self, _ms: Option<u64>) -> core::pin::Pin<alloc::boxed::Box<dyn core::future::Future<Output = ()> + '_>> {
         alloc::boxed::Box::pin(async move {
-            // LET THE 🦆 SAY FUCK! & TURN OFF THE DISPLAY
+            // LET THE 🦆 SAY “FUCK!“ & TURN OFF THE DISPLAY
             crate::components::co5300::stop_flash();
             yo_esp::play_fail().await;
             crate::components::co5300::sleep_now();
@@ -97,6 +98,8 @@ impl yo_esp::CommandHandler for VoiceHandler {
     }
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
 // DISPLAY CONTROLLER TASK
 #[embassy_executor::task]
 async fn display_task(
@@ -112,6 +115,8 @@ async fn display_task(
 
     // STATE VARIABLES 
     let mut screen_on = false;
+    // DEFAULT BRIGHTNESS 35%
+    let mut current_brightness = crate::load!(crate::state::DISPLAY_BRIGHTNESS);
     let mut flash_toggle = false;
     let mut last_page = crate::load!(crate::gui::pages::CURRENT_PAGE);
 
@@ -136,6 +141,14 @@ async fn display_task(
             screen_on = false;
         }
 
+        // DISPLAY BRIGHTNESS CONTROL
+        let desired = crate::load!(crate::state::DISPLAY_BRIGHTNESS);
+        if desired != current_brightness {
+            let byte = (desired as u16 * 255 / 100) as u8;
+            display.set_brightness(byte);
+            current_brightness = desired;
+        }
+
         if crate::components::co5300::consume_sleep() {
             if screen_on {
                 display.display_off();
@@ -150,24 +163,26 @@ async fn display_task(
         if flashing {
             flash_toggle = !flash_toggle;
             if flash_toggle {
-                display.fill_screen(embedded_graphics::pixelcolor::Rgb565::new(255, 255, 0)); // YELLOW
-            } else { display.fill_screen(embedded_graphics::pixelcolor::Rgb565::new(0, 0, 0)); } // BLACK
+                display.fill_screen(crate::gui::colors::YELLOW);
+            } else { display.fill_screen(crate::gui::colors::BLACK); }
         } else { // NORMAL PAGE RENDERING ( ONLY WHEN SCREEN IS ON )
             if screen_on {
                 let page = crate::load!(crate::gui::pages::CURRENT_PAGE);
                 let is_apps_page = page == 2; // APPS LAUNCHER
 
                 if is_apps_page || page != last_page || crate::is_dirty!() {
-                    fb.clear_color(embedded_graphics::pixelcolor::Rgb565::new(0, 0, 0)); // BLACK
+                    fb.clear_color(crate::gui::colors::BLACK);
 
                     match page {
                         0 => crate::gui::time::draw(&mut fb),
                         1 => crate::gui::battery::draw(&mut fb),
                         2 => crate::gui::apps::draw(&mut fb),
                         10 => crate::gui::media_player::draw(&mut fb),
-                        11 => crate::gui::media_player::draw(&mut fb),
+                        11 => crate::gui::settings::draw(&mut fb),
                         12 => crate::gui::media_player::draw(&mut fb),
                         13 => crate::gui::house::draw(&mut fb),
+                        100 => crate::gui::call::draw(&mut fb),
+                        101 => crate::gui::text::draw(&mut fb),
                         _ => {}
                     } // DON'T FORGET TO FLUSH FRAMEBUFFER
                     fb.flush(&mut display);
@@ -192,7 +207,8 @@ async fn display_task(
 }
 
 
-// FUNCTION TO CONTROL SPEAKER VOLUME (0-100) %
+// ───────────────────────────────────────────────────────────────────────
+// FUNCTION TO CONTROL SPEAKER VOLUME (0-100%)
 pub fn set_speaker_volume(volume: u8) {
     let volume = volume.min(100);
     crate::store!(crate::state::SPEAKER_VOLUME, volume);
@@ -209,7 +225,8 @@ pub fn set_speaker_volume(volume: u8) {
     });
 }
 
-// FUNCTION TO CONTROL MICROPHONE GAIN (0-100) %
+// ───────────────────────────────────────────────────────────────────────
+// FUNCTION TO CONTROL MICROPHONE GAIN (0-100%)
 pub fn set_mic_gain(percent: u8) {
     let percent = percent.min(100);
     crate::store!(crate::state::MIC_VOLUME, percent);
@@ -232,6 +249,7 @@ pub fn set_mic_gain(percent: u8) {
 }
 
 
+// ───────────────────────────────────────────────────────────────────────
 // MAIN
 #[allow(clippy::large_stack_frames)]
 #[esp_rtos::main]
@@ -272,7 +290,8 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
         esp_hal::gpio::InputConfig::default().with_pull(esp_hal::gpio::Pull::Up)
     );
 
-    // DISABLE (LOW) POWER AMPLIFIER - WE ENABLE (HIGH) LATER
+    // DISABLE (LOW) POWER AMPLIFIER 
+    // WE ENABLE (HIGH) LATER
     // TO AVOID THE SCARY POP SOUND
     let mut amp = esp_hal::gpio::Output::new(
         peripherals.GPIO46,
@@ -281,7 +300,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     );
 
 
-
+    // ───────────────────────────────────────────────────────────────────────
     // MICRO SECURE DIGITAL CARD (STORAGE OVER SPI)
     let sd_spi_config = esp_hal::spi::master::Config::default()
         .with_frequency(esp_hal::time::Rate::from_mhz(4))
@@ -305,6 +324,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     defmt::info!("STORAGE Successful initialization");
     
 
+    // ───────────────────────────────────────────────────────────────────────
     // I2C
     let i2c_a = esp_hal::i2c::master::I2c::new(
         peripherals.I2C0,
@@ -335,7 +355,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     
         // PMU INIT
         if let Err(e) = pmu.init(i2c_bus, &crate::components::axp2101::Axp2101Config::default()) {
-            defmt::error!("PMU init failed: {:?}", Debug2Format(&e));
+            defmt::error!("PMU init failed: {:?}", defmt::Debug2Format(&e));
         } else { defmt::info!("AXP2101 Successful initialization"); }
 
 
@@ -433,11 +453,13 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
 
     });
 
-    
+
+    // ───────────────────────────────────────────────────────────────────────    
     // DISPLAY - (80MHz OVER SPI)
     let spi_config = esp_hal::spi::master::Config::default()
         .with_frequency(esp_hal::time::Rate::from_mhz(80))
         .with_mode(esp_hal::spi::Mode::_0);
+
     // CREATE DISPLAY DMA BUFFER
     let (rx_buf, rx_desc, tx_buf, tx_desc) = esp_hal::dma_buffers!(8000);
     let dma_rx = esp_hal::dma::DmaRxBuf::new(rx_desc, rx_buf).unwrap();
@@ -451,16 +473,19 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
         .with_sio3(peripherals.GPIO7)
         .with_dma(peripherals.DMA_CH1)
         .with_buffers(dma_rx, dma_tx);
+
     let cs = esp_hal::gpio::Output::new(
         peripherals.GPIO12,
         esp_hal::gpio::Level::High,
         esp_hal::gpio::OutputConfig::default()
     );
+
     let reset = esp_hal::gpio::Output::new(
         peripherals.GPIO8,
         esp_hal::gpio::Level::High,
         esp_hal::gpio::OutputConfig::default()
     );
+
     let mut display = crate::components::co5300::Co5300Display::new(crate::components::qspi_bus::QspiBus::new(spi, cs), reset);
     display.init();
     
@@ -471,17 +496,18 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
 
     // FRAMEBUFFER
     let mut fb = crate::components::framebuffer::Framebuffer::new();
-    fb.clear_color(embedded_graphics::pixelcolor::Rgb565::new(0, 0, 0)); // BLACK
+    fb.clear_color(crate::gui::colors::BLACK);
     fb.flush(&mut display);
     
 
 
+    // ───────────────────────────────────────────────────────────────────────
     // WIFI SETUP
     let backend_port: u16 = crate::state::BACKEND_TCP_PORT_STR.parse().expect("Invalid BACKEND_TCP_PORT");
-    let (stack, remote_addr) = base::wifi::init(&spawner, peripherals.WIFI, backend_port).await;
+    let stack = base::wifi::init(&spawner, peripherals.WIFI, backend_port).await;
     
     // LET IT CONNECT PROPERLY BEFORE CONTINUING
-    /// WILL TRY TO CONNECT 3 TIMES BEFORE MOVING ON TO THE NEXT CONFIGURED SSID
+    // WILL TRY TO CONNECT 3 TIMES BEFORE MOVING ON TO THE NEXT CONFIGURED SSID
     crate::delay_s!(5);
 
     // SYNC REAL TIME CLOCK (RTC) TO NETWORK TIME PROTOCOL POOL (NTP)
@@ -491,6 +517,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     }
 
 
+    // ───────────────────────────────────────────────────────────────────────
     // I2S AUDIO SETUP 
     // CREATE RX & TX DMA BUFFERS
     let (_rx_buffer, rx_descriptors, tx_buffer, tx_descriptors) = esp_hal::dma_buffers!(crate::state::I2S_BUFFER_SIZE);
@@ -540,13 +567,18 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
         }
     };
 
-    // YO HANDLER (OUR VOICE COMMAND HANDLER)
+
+    // INIT YO HANDLER (OUR VOICE COMMAND HANDLER)
     let handler: alloc::boxed::Box<dyn yo_esp::CommandHandler> = alloc::boxed::Box::new(VoiceHandler);
 
-    // INIT API ROUTES
+
+    // ───────────────────────────────────────────────────────────────────────
+    // INIT ENDPOINT ROUTES FOR THE INTERNAL API
     crate::base::api::init_routes().await;
 
-    // FINISHED BOOT PROCESS
+
+    // ───────────────────────────────────────────────────────────────────────
+    // FINISHED BOOTING PROCESS
     // PRINT FIRMWARE INFORMATION
     defmt::info!("╬═══════════════════════════════╬");
     defmt::info!("╬ STARTED {} v{} ╬",
@@ -555,22 +587,25 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     ); defmt::info!("╬═══════════════════════════════╬");
 
 
+    // ───────────────────────────────────────────────────────────────────────
     // TASKS
 
-    // SPEAKER TASKS (STREAM AUDIO TO SPEAKER OVER TCP PORT 12345)
+    // SPEAKER TASK (WRITES AUDIO DATA INTO PIPE)
     crate::spawn!(spawner, yo_esp::speaker_task(tx_transfer));
-    crate::spawn!(spawner, yo_esp::stream_speaker(stack, backend_port));
-    // MICROPHONE TASK (STREAM AUDIO TO SERVER OVER TCP PORT 12345)
-    crate::spawn!(spawner, yo_esp::audio_capture_task(i2s_rx, stack, remote_addr, "esp", handler));
+    // NETWORK DEPENDENT TASKS
+    if crate::load!(crate::state::WIFI_CONNECTED) {
+        // SPEAKER TASK (STREAM AUDIO TO SPEAKER OVER TCP PORT 12345)
+        crate::spawn!(spawner, yo_esp::stream_speaker(stack, backend_port));
+        // MICROPHONE TASK (STREAM AUDIO TO SERVER OVER TCP PORT 12345)
+        crate::spawn!(spawner, yo_esp::audio_capture_task(i2s_rx, stack, crate::state::BACKEND_TCP_HOST, backend_port, "esp", handler));
+        // HTTP WEB SERVER TASK (PORT 80)
+        crate::spawn!(spawner, tinyapi::web_server_task(stack));          
+    }
     // LISTEN FOR GUI MEDIA TOUCH EVENTS (PLAY/PAUSE/NEXT ETC)
     crate::spawn!(spawner, crate::applications::media_player::media_command_task(spawner));
-    // HTTP WEB SERVER TASK (PORT 80)
-    crate::spawn!(spawner, tinyapi::web_server_task(stack));  
     // BUTTON MONITOR TASK
     crate::spawn!(spawner, crate::components::buttons::buttons_task(button_boot, button_power));
     // TOUCH TASK
-    //crate::spawn!(spawner, crate::components::ft3168::touch_task());
-    // GUI GESTURES TASK (SWIPE etc)
     crate::spawn!(spawner, crate::gui::pages::touch_task());
     // DISPLAY TASK
     crate::spawn!(spawner, display_task(fb, display));
@@ -578,15 +613,17 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     crate::spawn!(spawner, crate::components::pcf85063a::rtc_update_task());
 
 
+    // ───────────────────────────────────────────────────────────────────────
     // IT'S NOW SAFE TO CRANK UP THE AMP
-    // (WITHOUT LOAD POPPING NOISE)
+    // WITHOUT LOAD POPPING NOISE
     amp.set_high();
-    crate::delay_s!(2);
-    
+    crate::delay_s!(1);
+
+
     // PLAY BOOT SOUND
     yo_esp::play_ding().await;
  
-    
+
     // MAIN LOOP
     loop { // GET BATTERY STATUS
         let (percent, voltage_mv, charging, usb_connected) = critical_section::with(|cs| {
@@ -660,5 +697,5 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
         crate::delay_s!(60);        
         
     } // 🦆🧑‍🦯 thank you for quackin' along!
-    // if you had fun - please concider buying me a coffee 
+    // if you found this helpful - please concider buying me a coffee 
 } // ☕ ⮞ https://buymeacoffee.com/quackhackmcblindy

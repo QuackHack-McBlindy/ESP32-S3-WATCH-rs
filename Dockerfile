@@ -1,4 +1,3 @@
-#FROM rust:1.94-slim AS builder
 FROM rust:1.84-slim
 
 RUN apt-get update && apt-get install -y \

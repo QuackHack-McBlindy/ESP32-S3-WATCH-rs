@@ -2,14 +2,14 @@
 set -euo pipefail
 
 source_readme="/home/pungkula/dotfiles/README.md"
-target_readme="./README.md"   # or full path if needed
+target_readme="./README.md"
 
-# ---- extract numbers ----
+
 regex_patterns=$(grep -oP '\d+(?= dynamically generated regex patterns)' "$source_readme" || echo "unknown")
 voice_scripts=$(grep -oP '\d+(?= scripts have voice commands)' "$source_readme" || echo "unknown")
 phrases=$(grep -oP '\d+(?= phrases available as commands)' "$source_readme" || echo "unknown")
 
-# extract and filter table
+
 awk '/^\| Command Syntax/,/^$/' "$source_readme" > /tmp/readme_table_raw.txt
 awk -F '|' '
     NR <= 2 { print; next }

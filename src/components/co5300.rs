@@ -4,11 +4,14 @@
 
 use crate::components::qspi_bus::QspiBus;
 
+// ───────────────────────────────────────────────────────────────────────
 // INTERNAL FLAGS
 crate::init_bool!(SHOULD_WAKE, false);
 crate::init_bool!(SHOULD_SLEEP, false);
 crate::init_bool!(FLASH_ON, false);
 
+
+// ───────────────────────────────────────────────────────────────────────
 // CO5300 COMMANDS
 // SOFTWARE RESET
 const CMD_SWRESET: u8 = 0x01;
@@ -35,6 +38,7 @@ const CMD_WCE: u8 = 0x58;
 // MADCTL FLAGS
 const MADCTL_RGB: u8 = 0x00;
 
+// ───────────────────────────────────────────────────────────────────────
 // DELAYS
 const RST_DELAY_MS: u32 = 200;
 const SLPOUT_DELAY_MS: u32 = 120;
@@ -330,28 +334,36 @@ impl embedded_graphics_core::draw_target::DrawTarget for Co5300Display<'_> {
 }
 
 
-/// CALL WHEN WAKE WORD IS DETECTED.
+// ───────────────────────────────────────────────────────────────────────
+// CALL WHEN WAKE WORD IS DETECTED.
 pub fn wake_up() {
     crate::store!(SHOULD_SLEEP, false);
     crate::store!(SHOULD_WAKE, true);
 }
 
-/// CALL WHEN SERVER STARTS TRANSCRIPTION.
+
+// ───────────────────────────────────────────────────────────────────────
+// CALL WHEN SERVER STARTS TRANSCRIPTION.
 pub fn start_flash() {
     crate::store!(FLASH_ON, true);
 }
 
-/// CALL WHEN TRANSCRIPTION IS DONE.
+
+// ───────────────────────────────────────────────────────────────────────
+// CALL WHEN TRANSCRIPTION IS DONE.
 pub fn stop_flash() {
     crate::store!(FLASH_ON, false);
 }
 
-/// CALL WHEN VOICE SESSION ENDS.
+
+// ───────────────────────────────────────────────────────────────────────
+// CALL WHEN VOICE SESSION ENDS.
 pub fn sleep_now() {
     crate::store!(SHOULD_WAKE, false);
     crate::store!(SHOULD_SLEEP, true);
 }
 
+// ───────────────────────────────────────────────────────────────────────
 // FUNCTIONS USED BY THE DISPLAY TASK TO READ FLAGS
 pub fn consume_wake() -> bool {
     if SHOULD_WAKE.swap(false, core::sync::atomic::Ordering::Relaxed) {

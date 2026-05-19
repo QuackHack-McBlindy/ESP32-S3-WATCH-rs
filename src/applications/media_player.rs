@@ -1,26 +1,28 @@
 // APPLICATIONS/MEDIA_PLAYER
 // MEDIA PLAYER WITH MP3 DECODING & DOWNSAMPLING.
-// PLAYBACK USAGE:
-// crate::spawn!(spawner, crate::applications::media_player::play_mp3_task(alloc::string::ToString::to_string("/Music/MySong.mp3")));
+// THIS IS Qwackify
 
+// ───────────────────────────────────────────────────────────────────────
 // DESCRIBE THIS APPLICATION
 pub const APP_DESCRIPTOR: crate::applications::AppDescriptor = crate::applications::AppDescriptor {
     name: "Qwackify",
     description: "Play MP3 songs from the SD card",
     grid_position: crate::applications::GridSlot::TopLeft,
     launch: open_app,
-    icon: include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/apps/qwackify.png")),
+    icon: crate::base::assets::QWACKIFY_PNG,
 };
 
 pub fn open_app() {
     crate::store!(crate::gui::pages::CURRENT_PAGE, 10);
 }
 
+// ───────────────────────────────────────────────────────────────────────
+
 use alloc::string::String;
 use alloc::vec::Vec;
 use alloc::string::ToString;
 
-
+// ───────────────────────────────────────────────────────────────────────
 // TYPES & GLOBAL STATE
 #[derive(Clone, Copy, PartialEq)]
 pub enum PlaybackState {
@@ -36,6 +38,7 @@ pub struct Track {
     pub file_path: String,
 }
 
+// ───────────────────────────────────────────────────────────────────────
 // TOTAL TRACK DURATION IN MILLISECONDS
 pub static TRACK_DURATION_MS: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
 // CURRENT PLAYBACK POSITION IN MILLISECONDS
@@ -58,6 +61,8 @@ pub static PLAYER: CsMutex<core::cell::RefCell<PlayerInner>> = CsMutex::new(core
     current_track_index: 0,
 }));
 
+
+// ───────────────────────────────────────────────────────────────────────
 // SIGNAL TO STOP THE CURRENTLY PLAYING TASK
 static STOP_SIGNAL: embassy_sync::signal::Signal<embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex, ()> = embassy_sync::signal::Signal::new();
 
@@ -66,6 +71,8 @@ fn playlist_len() -> usize {
     critical_section::with(|cs| PLAYLIST.borrow_ref(cs).len())
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
 // PARSE A 4‑BYTE MPEG AUDIO FRAME HEADER, RETURNING (BITRATE, SAMPLE_RATE, FRAME_LENGTH)
 fn parse_mp3_frame_header(header: &[u8]) -> Option<(u32, u32, u32)> {
     if header.len() < 4 { return None; }
@@ -102,6 +109,8 @@ fn parse_mp3_frame_header(header: &[u8]) -> Option<(u32, u32, u32)> {
     Some((bitrate, sample_rate, frame_length))
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
 // ROUGH ESTIMATE OF MP3 DURATION (BASED ON CBR ASSUMPTION)
 fn estimate_mp3_duration_ms(file_path: &str) -> u32 {
     let file_size_bytes = crate::components::storage::file_size(file_path).unwrap_or(0);
@@ -183,12 +192,16 @@ fn estimate_mp3_duration_ms(file_path: &str) -> u32 {
     }
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
 pub fn current_track_title() -> Option<String> {
     critical_section::with(|cs| {
         CURRENT_TRACK_TITLE.borrow_ref(cs).clone()
     })
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
 // PUBLIC API
 pub async fn handle_action(spawner: embassy_executor::Spawner, action: &str) -> String {
     match action {
@@ -208,6 +221,8 @@ pub async fn handle_action(spawner: embassy_executor::Spawner, action: &str) -> 
 }
 
 
+// ───────────────────────────────────────────────────────────────────────
+// START PLAYBACK FUNCTION
 async fn start_playback(spawner: embassy_executor::Spawner) -> Result<(), &'static str> {
     let pl_len = playlist_len();
     let (track_title, track_path) = if pl_len > 0 {
@@ -279,6 +294,8 @@ fn stop() {
     });
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
 // NEXT TRACK
 async fn next(spawner: embassy_executor::Spawner) {
     let pl_len = playlist_len();
@@ -295,6 +312,8 @@ async fn next(spawner: embassy_executor::Spawner) {
     if was_playing { let _ = start_playback(spawner).await; }
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
 // PREVIOUS TRACK
 async fn prev(spawner: embassy_executor::Spawner) {
     let pl_len = playlist_len();
@@ -311,6 +330,8 @@ async fn prev(spawner: embassy_executor::Spawner) {
     if was_playing { let _ = start_playback(spawner).await; }
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
 // INCREASE VOLUME
 pub fn volume_up() {
     let current = crate::load!(crate::state::SPEAKER_VOLUME);
@@ -318,6 +339,8 @@ pub fn volume_up() {
     crate::set_speaker_volume(new);
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
 // DECREASE VOLUME
 pub fn volume_down() {
     let current = crate::load!(crate::state::SPEAKER_VOLUME);
@@ -326,6 +349,7 @@ pub fn volume_down() {
 }
 
 
+// ───────────────────────────────────────────────────────────────────────
 // ASYNC MP3 PLAYBACK TASK
 #[embassy_executor::task]
 pub async fn play_mp3_task(path: String) {
@@ -445,6 +469,8 @@ pub async fn play_mp3_task(path: String) {
     crate::store!(crate::state::MEDIA_IS_PLAYING, false);
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
 // M3U PLAYLIST PARSER
 fn parse_m3u(data: &str) -> Vec<Track> {
     let mut tracks = Vec::new();
@@ -475,6 +501,8 @@ fn parse_m3u(data: &str) -> Vec<Track> {
     tracks
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
 // FETCH/UPDATE THE PLAYLIST
 pub async fn fetch_playlist(stack: embassy_net::Stack<'_>, url: &str) -> Result<(), &'static str> {
     let mut buf = [0u8; 4096];
@@ -498,6 +526,8 @@ pub async fn fetch_playlist(stack: embassy_net::Stack<'_>, url: &str) -> Result<
     Ok(())
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
 // TASK TO CONSUME TOUCH COMMANDS FROM THE ATOMIC `MEDIA_COMMAND`
 // SENT FROM THE GRAPHICAL USER INTERFACE
 #[embassy_executor::task]
@@ -513,13 +543,13 @@ pub async fn media_command_task(spawner: embassy_executor::Spawner) {
         let cmd = MediaCommand::from(cmd_byte);
         match cmd { // PREVIOUS TRACK
             MediaCommand::Prev => {
-                defmt::debug!("Received command: Previous track");
+                defmt::info!("Received command: Previous track");
                 if playlist_len() > 0 {
                     prev(spawner).await;
                 }
             } // PLAY/PAUSE
             MediaCommand::PlayPause => {
-                defmt::debug!("Received command: Play/Pause media");
+                defmt::info!("Received command: Play/Pause media");
                 if playlist_len() == 0 {
                     // NO TRACKS IN PLAYLIST – TRY TO START PLAYBACK ANYWAY (WILL PICK ANY MP3)
                     let _ = start_playback(spawner).await;
@@ -534,7 +564,7 @@ pub async fn media_command_task(spawner: embassy_executor::Spawner) {
                 }
             } // NEXT TRACK
             MediaCommand::Next => {
-                defmt::debug!("Received command: Next track");
+                defmt::info!("Received command: Next track");
                 if playlist_len() > 0 {
                     next(spawner).await;
                 }

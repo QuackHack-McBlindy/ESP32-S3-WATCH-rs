@@ -7,23 +7,28 @@
 
 > [!NOTE]
 > **🧑‍🦯 Personal project!**  
-> **As I am blind this firmware is mostly focused on accessibility through the voice assistant functionality of the watch.**  
-> **It has touch and a graphical user interface -- but it is BIG.**  
+> **As I am blind this OS is mostly focused on accessibility through the voice assistant functionality of the watch.**  
+> **It has a full graphical user interface -- but it's designed for a blind man, so it's BIG.**  
 <br>
 
-**Bare Metal** *(no_std)* **ESP32-S3** firmware written in Rust using the `esp-hal` as hardware abstraction layer.  
-Without the `ESP-IDF` API.   
-Designed to be used as a personal voice assistant watch with **EXTENSIVE** custom voice commands & a media player, web server and **much much more!**    
+
+**Bare Metal** *(no-std)* voice-driven wearable OS for **ESP32-S3** smartwatch with a high focus on accessibility and smart home and media control. Written in Rust, using `esp-hal` as it's hardware abstraction layer.  
+There is no usage of the `ESP-IDF` API in this firmware.   
+  
+Designed to be used as a personal voice assistant watch with **EXTENSIVE** custom voice commands & **much much more!** *(I flush the toilet with this thing..)*  
 
 *“Source code is the best documentation.“*   
 
+<br>
+Be sure to check out the demo usage videos/pictures down below.  
 <br><br>
 
 Its up to [yo](https://github.com/QuackHack-McBlindy/yo) to write your own voice commands.  
 My watch can execute **57** different [scripts](https://github.com/QuackHack-McBlindy/dotfiles), and understands **272684913**  different phrases as voice commands **-- with a average processing time of 2,713 ms per command**.  
-
-    
-
+  
+The top-tier performance come from a **deterministic** voice architecture and smart caching inside the voice intents.  
+  
+ 
 
 ## **Table Of Contents**
 
@@ -58,7 +63,7 @@ My watch can execute **57** different [scripts](https://github.com/QuackHack-McB
 
 Turn up volume & hit play.  
 
-[Play demo video](https://github.com/user-attachments/assets/357bf377-0874-4f42-8d15-3532c31bc813)
+[Play voice assistant wake word demo video](https://github.com/user-attachments/assets/357bf377-0874-4f42-8d15-3532c31bc813)
 
   
 **Yes, it's fast!** *(TTS generation is the bottleneck)*  
@@ -68,37 +73,56 @@ Turn up volume & hit play.
 
 [Play demo video of media player](https://github.com/user-attachments/assets/6880aa18-7a8a-437c-bca0-b99c03bb1682)
 
-**Sorry, i blame blindness for the quality of thje video/pictures.**
-Will update with new when someone with better camera can help.  
 
 <br>
 
 #### **Pictures**
 
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/time.jpeg">
-  <img src="resource/time.jpeg" alt="Clock" width="148">
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/clock.jpeg">
+  <img src="resource/demo/clock.jpeg" alt="Clock" width="148">
 </a>
 
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/battery2.jpeg">
-  <img src="resource/battery.jpeg" alt="Battery" width="148">
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/battery.jpeg">
+  <img src="resource/demo/battery.jpeg" alt="Battery" width="148">
 </a>
 
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/media_player.jpeg">
-  <img src="resource/media_player.jpeg" alt="Media Player" width="148">
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/charging.jpeg">
+  <img src="resource/demo/charging.jpeg" alt="Charging" width="148">
 </a>
 
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/launcher.jpeg">
+  <img src="resource/demo/launcher.jpeg" alt="Launcher" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/qwackify.jpeg">
+  <img src="resource/demo/qwackify.jpeg" alt="Media Player -Qwackify" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/calling.jpeg">
+  <img src="resource/demo/calling.jpeg" alt="Dad is calling" width="148">
+</a>
+
+
+  
+**Sorry, I have been told I am the master of blurry pictures.**  
+*(how would I know...)*  
 
 <br><br>
 
 
 ## **Overview**
 
+
+*“A powerful voice assistant can make a huge difference for blind people.”*  
+*“Imagine yourself stumbling blindly across the room looking for the remote — meanwhile, I cam call it using only my voice.”*  
+
+
 `ESP32-S3-WATCH-rs` is a `no_std` Rust firmware for the ESP32-S3 based smartwatch. The primary goal is to create a fully voice‑controlled assistant that is highly accessible for blind and visually impaired users. All interactions can be performed via voice, and the graphical interface is designed with large, high‑contrast elements.  
 
 The watch streams audio to a companion backend service called [`yo`](https://github.com/QuackHack-McBlindy/yo), which handles wake word detection, speech‑to‑text, intent recognition and execution, and text‑to‑speech synthesis. The watch itself streams microphone audio, serves TCP server for audio streaming to the speaker, manages notifications, plays media, and serves a web frontend for web based media playback in the browser called **Qwackify**, which is like Jellyfin on steroids - but much more good looking and served directly from a watch.  <br>
 
 The watch also has an internal API serving GET endpoints for controlling options and media playback -- playing local music straight from the micro SD card is as easy as:  <br>
-**From your desktop:** `curl http://<ESP_IP>:80/api/media/search/songs/mysong`.  <br>
+**From your desktop:** `curl http://<ESP_IP>/api/media/search/songs/mysong`.  <br>
 **From the watch:** tap the boot button to open the app launcher, swipe down to the app `Qwackify` and double tap it to open then press play.  <br>
 **Using your voice, say:** `yo bitch! play the duck song`.  
 
@@ -106,21 +130,24 @@ The watch also has an internal API serving GET endpoints for controlling options
 
 ## **Project Structure & Design**  
 
-I knew that if I did not do this properly - right away, that it would get really messy.  
+I knew that if I did not do this properly like I want it - right away, that it would get really messy, and never get done.  
 I amm basically writing a complete voice-driven API on top of every available run-time option of `esp-hal`.   
-Modular API and using only fully qualified paths everywhere, should help keep things as tiny as possible.      
+Modular API and using use statements only when needed, otherwise fully qualified paths everywhere, should help keep things as tiny as possible.      
+I also prefer to have some of the extensive code as library crates, it can be useful for other people or simplify usage for myself on my other devices.  
 
 ```
 📂 ESP32-S3-WATCH-rs
 ├── 📂 applications
 │   ├── 📄 media_player.rs
-│   ├── 📄 smart_home.rs
+│   ├── 📄 house.rs
 │   └── 📄 mod.rs
 ├── 📂 base
 │   ├── 📂 routes
 │   │   └── 📂 ... 
 │   │       └── 📂 ... 
+│   ├── 📄 assets.rs
 │   ├── 📄 api.rs
+│   ├── 📄 bluetooth.rs
 │   ├── 📄 macros.rs
 │   ├── 📄 uptime.rs
 │   ├── 📄 wifi.rs
@@ -137,14 +164,24 @@ Modular API and using only fully qualified paths everywhere, should help keep th
 │   ├── 📄 qspi_bus.rs
 │   ├── 📄 storage.rs
 │   └── 📄 mod.rs
+├── 📂 crates
+│   ├── 📂 barely-fuzzy
+│   ├── 📂 embedded-png
+│   ├── 📂 es7210
+│   ├── 📂 es8311
+│   ├── 📂 tinyapi
+│   └── 📂 yo-esp
 ├── 📂 gui
 │   ├── 📄 animations.rs
 │   ├── 📄 apps.rs
 │   ├── 📄 battery.rs
+│   ├── 📄 call.rs
+│   ├── 📄 colors.rs
 │   ├── 📄 house.rs
 │   ├── 📄 media_player.rs
 │   ├── 📄 pages.rs
-│   ├── 📄 rolex.rs
+│   ├── 📄 settings.rs
+│   ├── 📄 text.rs
 │   ├── 📄 time.rs
 │   └── 📄 mod.rs
 ├── 📄 main.rs
@@ -160,11 +197,14 @@ Modular API and using only fully qualified paths everywhere, should help keep th
 
 Project roadmap - watch as `watch` grows and evolves along the road.  
 Extend with more crazy ideas as they pop up. `ESP32-S3-WATCH-rs` is still under active development, and will be as long as this list is not complete.  
-**Feel free to contribute with any cool ideas you might have for the watch!! - Nothing is impossible!**  
+**Feel free to contribute with any cool ideas you might have for the `ESP32-S3`! - Nothing is impossible!**  
 
 - [x] Async & WiFi
 - [x] Handle multiple SSID/WiFi alternatives  
 - [x] Buttons & Deep Sleep (power-save mode)
+- [x] Interactive Shell terminal (Bash syntax over HTTP)
+- [x] Remote file upload to the SD card (streamed chunks, POST)
+- [x] Remote file download from the SD card (streamed chunks)
 - [x] i2s: RX Microphone  
 - [x] i2s: TX Speaker  
 - [x] i2s: Simultaneous RX & TX  (Full-Duplex)
@@ -176,8 +216,6 @@ Extend with more crazy ideas as they pop up. `ESP32-S3-WATCH-rs` is still under 
 - [x] On-Device API
 - [x] On-Device WebServer & Web Media Player (with casting to Android TV)
 - [ ] Draw graphs on watch from input data 
-- [ ] Fully voice controlled. (Change any setting at run-time) 
-- [x] Graphical User Interface
 - [ ] Generate on-device QR codes. (need TLS for secure secret sharing via QR)
 - [x] Broadcasting all text-to-speech to every ESP32 device.   
 - [ ] Phone calls/text message (Bluetooth HandsFree Protocol)
@@ -276,7 +314,7 @@ If you prefer to handle your media manually in the web browser - good news!
 Your `ESP32-S3` is now serving a fully featured media player that can cast to your TV's and has built-in transcoding (transcoding on backend).  
 You can go ahead and visit your device at:  
 
-`http://<ESP_IP>:80/`  
+`http://<ESP_IP>/`  
 
 
 https://github.com/user-attachments/assets/bdbd0250-b683-4ffa-b8cb-817d0589df1a 
@@ -290,46 +328,112 @@ https://github.com/user-attachments/assets/91760f4f-0f31-439e-bc6b-8d2960c62cd8
 ### **API**    
 
 The API is designed to be easily expandable.       
-*Fetch all your available endpoints at:* `curl http://<ESP_IP>:80/api`      
+*Fetch all your available endpoints at:* `curl http://<ESP_IP>/api`      
   
   
 Using the internal API you can for example set the `ESP32-S3` display brightness to 75 percentage using:    
 
 ```bash
-curl http://<ESP_IP>:80/api/settings/display/brightness/75 
+curl http://<ESP_IP>/api/settings/display/brightness/75 
 ```
   
 
 | Endpoint | Description |
 |----------|-------------|
 | `/` | Serves the web frontend (HTML dashboard) |
-| `/favicon.ico` | Serves the favicon (currently returns 404) |
-| `/script.js` | Serves the JavaScript frontend logic |
+| `/favicon.ico` | Serves the favicon |
 | `/api` | Returns a plain‑text list of all available API endpoints |
-| `/api/update` | Trigger OTA firmware update |
-| `/api/settings/power/state/{value}` | Control device power: `on`, `off`, or `toggle` (default) |
-| `/api/settings/display/state/{value}` | Control display on/off: `on`, `off`, or `toggle` |
-| `/api/settings/display/brightness/{value}` | Set backlight brightness (0–80%). `{value}` as integer percent |
-| `/api/settings/display/page/{value}` | Change display page (page number). `{value}` as integer page number |
-| `/api/settings/mic/volume/{value}` | Set microphone gain (0–100%). Returns current volume |
+| `/api/shell/{cmd}` | Send a Shell command (see supported commands below) |
+| `/api/upload/file/{file}` | Upload any file to the root of the SD card **Note: POST** |
+| `/api/upload/file/music/{file}` | Upload a song to the SD cards `/Music` directory **Note: POST** |
+| `/api/download/file/{file}` | Download any file from the `/share` directory of the SD card |
+| `/api/download/file/music/{file}` | Download a song from the SD cards `/Music` directory |
+| `/api/sensor/{value}` | Read a single sensor/system value (see supported keys below) |
+| `/api/sensors` | Returns all sensor/system values as JSON |
+| `/api/media/play` | Sends `play` command to the media player. Starts the playback |
+| `/api/media/pause` | Sends `pause` command to the media player. Pauses the playback |
+| `/api/media/previous` | Sends `previous` command to the media player. Plays previous track |
+| `/api/media/next` | Sends `next` command to the media player. Plays next track |
+| `/api/media/search/songs/{song}` | Fuzzy search & play MP3 files from SD card. Returns matching song names and starts playback |
+| `/api/settings/bluetooth/{value}` | Set bluetooth state (on/off). |
+| `/api/settings/mic/volume/{value}` | Set microphone gain (0–100%). `{value}` as integer percent |
 | `/api/settings/mic/mute/{value}` | Mute/unmute mic: `1`/`on`/`mute`, `0`/`off`/`unmute`, or `toggle` |
 | `/api/settings/speaker/volume/{value}` | Set speaker volume (0–100%) |
 | `/api/settings/speaker/mute/{value}` | Mute/unmute speaker: same options as mic mute |
-| `/api/media/{action}` | Media control (e.g., `play`, `pause`, `next`, `prev`) |
-| `/api/media/search/songs/{song}` | Fuzzy search & play local MP3 files stored on the SD card. |
-| `/api/sensors` | Returns all sensor/system values as JSON |
-| `/api/sensor/{value}` | Read a sensor or system value (see supported keys below) |
+| `/api/settings/display/brightness/{value}` | Set backlight brightness (0–100%). `{value}` as integer percent |
+| `/api/settings/display/state/{value}` | Set display state (on/off). |
+| `/api/settings/display/call/{value}` | Run this endpoiint with the callers name from iPhone when you receieve a phone call to display the calling page on the watch. This page let's user accept/decline the call. |
+| `/api/settings/display/page/{value}` | Change display page. `{value}` integer: 0=clock,1=battery,2=apps,10=media player, etc. |
+| `/api/settings/display/text/{value}` | Displays the provided value as a large text on the display. |
+| `/api/settings/wifi/set/ssid/{ssid}/password/{password}` | Saves a WiFi SSID to the WiFI connection list |
+| `/api/settings/wifi/off` | Turns off the WiFi **Note: turning on WiFi via API call not possible!** |
+
 
 ### Supported sensor keys for `/api/sensor/{value}`
 
-| Key | Description |
-|-----|-------------|
-| `battery`, `battery_level`, `battery_percentage` | Battery charge % (e.g., `78`) |
-| `battery_voltage`, `voltage` | Battery voltage in V (e.g., `3.84`) |
-| `rssi`, `wifi_signal`, `wifi` | Wi‑Fi signal strength in dBm (e.g., `-54`) |
-| `ip` | Device IP address (e.g., `192.168.1.122`) |
-| `uptime` | System uptime (e.g., `3d 14h`) |
-| `firmware`, `version` | Firmware version string (e.g., `v2.1.0`) |
+| Key(s)                                                       | Description                         |
+|--------------------------------------------------------------|-------------------------------------|
+| `battery`, `battery_level`, `battery_percentage`             | Battery charge in percent           |
+| `battery_voltage`, `voltage`                                 | Battery voltage in millivolts       |
+| `battery_charging`                                           | Charging status (0 or 1)            |
+| `battery_need_charging`                                      | Low battery warning (0 or 1)        |
+| `battery_full`                                               | Battery full flag (0 or 1)          |
+| `battery_usb_connected`                                      | USB connection status (0 or 1)      |
+| `brightness`, `display`                                      | Display brightness (0–100)          |
+| `display_state`                                              | Display power state (0 = off, 1 = on)|
+| `rssi`, `wifi_signal`, `wifi`                                | Wi‑Fi signal strength in dBm        |
+| `ip`                                                         | Device IPv4 address                 |
+| `speaker`                                                    | Speaker volume (0–100)              |
+| `mic`                                                        | Microphone gain (0–100)             |
+| `uptime`                                                     | System uptime (e.g., "02h 15m 30s") |
+| `time`                                                       | Current time in HH:MM:SS            |
+| `firmware`, `version`                                        | Firmware version string             |
+
+
+### **Shell**
+
+A Bash‑like interactive shell over HTTP.  
+Commands are issued via `GET /api/shell/{command}`.  
+Spaces must be encoded as `%20`, and slashes inside paths as `%2F`.  
+
+**Examples:**  
+
+```bash
+# `ls /Music`
+curl "http://<ESP_IP>/api/shell/ls%20%2FMusic"
+```
+
+Or check what is on the SD card from browser, visit: `http://<ESP_IP>/api/shell/tree`  
+You should see something like:  
+
+```
+ .
+├──  Music
+│   ├── 🎵 ducksong-1.mp3  
+│   └── 🎵 ducksong-gangstarap.mp3
+└──  share
+    └──  image.jpeg
+```
+
+
+| Command | Description |
+|---------|-------------|
+| `--help` or `help` | Print shell documentation and examples |
+| `ls [path]` | List directory contents (relative or absolute) |
+| `cd [path]` | Change working directory (`.` = stay, `..` = up one, `...` = up two, no arg = root) |
+| `pwd` | Print current working directory |
+| `nano <file>` | Creates a text file (TODO) |
+| `cat <file>` | Display text file content |
+| `hexdump <file>` | Show binary file in hexadecimal (truncated to ~500 chars) |
+| `rm <file>` | Delete a file (no confirmation) |
+| `mv <file> <path>` | Moves a file **Note: moving of very large is not possible** |
+| `jq <file>` | Parse JSON file (TODO) |
+| `tree [path]` | Recursive directory listing |
+
+
+
+> **Persistence:** The shell keeps state – `cd` into a directory, then `ls` and `cat` will use that directory for relative paths.  
+> Use `pwd` to see where you are.  
 
 
 <br><br>
@@ -529,7 +633,7 @@ I2S_DSDIN → GPIO40
 MOSI → GPIO1  
 SCK → GPIO2  
 MISO → GPIO3  
-SDCS → GPIO? (partially obscured in image, likely GPIO?—appears cut off)  
+SDCS → GPIO   
   
 **Buttons / Control**  
   
@@ -629,8 +733,9 @@ Will extend with more applications as I think of any useful ones.
 The watch is basically running the CPU on max all the time because of all the heavy lifting.   
 Battery optimization will be done after some more usage.  
 The biggest battery saving win you can do right now is holding down the power button for 5 seconds when it's not going to be actively used - which will put the device into deep sleep.  
-Touching the display alternatively pushing power button again will wake it up again.   
+Holding the  power button again will wake it up again.   
 
+As battery is not really optimized yet, it drains pretty quickly but it recharges very fast too (rougly 10-15 minutes).  
 
 <br><br>
 
@@ -657,6 +762,4 @@ Touching the display alternatively pushing power button again will wake it up ag
 
 This project is licensed under the terms of the MIT license.  
 See the `LICENSE` file in the repository for full details.  
-
-
 

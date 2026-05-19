@@ -7,7 +7,7 @@ pub const APP_DESCRIPTOR: crate::applications::AppDescriptor = crate::applicatio
     description: "Placeholder application",
     grid_position: crate::applications::GridSlot::BottomLeft,
     launch: open_app,
-    icon: include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/apps/app3.png")),
+    icon: crate::base::assets::APP3_PNG,
 };
 
 

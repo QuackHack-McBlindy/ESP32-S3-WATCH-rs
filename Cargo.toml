@@ -1,135 +1,136 @@
+# ESP32-S3-WATCH-rs ⮞ https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs
+#  BARE METAL RUST  - HARDWARE ABSTRACTION LAYER `esp-hal`
+#   SMARTWATCH OS   - BY QuackHack-McBlindy 🦆🧑‍🦯
+# ───────────────────────────────────────────────────────────────────────
 [package]
-name = "ESP32-S3-WATCH"
-version = "0.2.0"
-description = "Bare Metal (no_std + alloc) firmware for `WaveShare ESP32-S3-Touch-AMOLED-2.06` using `esp-hal` as Hardware Abstraction Layer and `embassy` as Async runtime. Firmware is mainly focused on accessibility using voice assistance."
+name    = "ESP32-S3-WATCH"
+version = "0.2.2"
 edition = "2024"
-
-rust-version = "1.88"
-license = "MIT"
+# ───────────────────────────────────────────────────────────────────────
+description = """
+  Bare metal voice-driven wearable OS for ESP32-S3 smartwatch with high focus on accessibility & smart home/media control."""
+# ───────────────────────────────────────────────────────────────────────
+authors    = ["QuackHack-McBlindy"]
 repository = "https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs"
-authors = ["QuackHack-McBlindy"]
-readme = "README.md"
-keywords = [ "no-std", "esp-hal", "embedded", "i2s", "audio", "esp32s3", "embassy", "esp32"]
+license    = "MIT"
+readme     = "README.md"
+keywords   = [ "no-std", "esp-hal", "embedded", "i2s", "audio", "esp32s3", "embassy", "esp32"]
 categories = [
     "embedded",
     "no-std",
     "development-tools",
     "network-programming"
 ]
-
-
-
+rust-version = "1.88"
+# ───────────────────────────────────────────────────────────────────────
+# DEPENDENCIES
 [dependencies]
-# QUACKHACK-MCBLINDY CRATES
-# YO-ESP - BIDIRECTIONAL I2S CONNECTION
-yo-esp = { path = "vendor/yo-esp", features = ["sounds"] }
-embedded-png = { path = "vendor/embedded-png" }
-# ES7210/ES8311 AUDIO CODECS
-es7210 = "0.1.0"
-es8311 = "0.1.0"
-# TINYAPI - SETUP GET API ROUTES 
-tinyapi = "0.1.12"
-# BARELY-FUZZY - LEVENSTEIN + TRIGRAM
-barely-fuzzy = { version = "0.1.0", features = ["alloc"] }
-
+# MY LIBRARY CRATES ⮞ https://crates.io/users/QuackHack-McBlindy
+es7210       = { path = "src/crates/es7210" }
+es8311       = { path = "src/crates/es8311" }
+tinyapi      = { path = "src/crates/tinyapi" }
+embedded-png = { path = "src/crates/embedded-png" }
+yo-esp       = { path = "src/crates/yo-esp", features = ["sounds"] }
+barely-fuzzy = { path = "src/crates/barely-fuzzy", features = ["alloc"] }
+# ───────────────────────────────────────────────────────────────────────
 # ESP ECOSYSTEM
-esp-hal = { version = "1.1.0", features = ["defmt", "esp32s3", "unstable"] }
+esp-hal  = { version = "1.1.0", features = ["defmt", "esp32s3", "unstable"] }
 esp-rtos = { version = "0.3.0", features = [
-  "defmt",
-  "embassy",
-  "esp-alloc",
-  "esp-radio",
-  "esp32s3",
+    "defmt",
+    "embassy",
+    "esp-alloc",
+    "esp-radio",
+    "esp32s3",
 ] }
-esp-alloc = { version = "0.10.0", features = ["defmt"] } # Mem
-esp-storage  = { version = "0.4.0", features = ["esp32s3"] } 
-# ESPRESSIF BOOTLOADER
+esp-alloc              = { version = "0.10.0", features = ["defmt"] } # Mem
+esp-storage            = { version = "0.4.0", features = ["esp32s3"] } 
 esp-bootloader-esp-idf = { version = "0.5.0", features = ["defmt", "esp32s3"] }
 
-# Power Manaagement
-axp2101-embedded = "0.3"
-
-# Graphics
+# ───────────────────────────────────────────────────────────────────────
+# GRAPHICS
 embedded-graphics = "0.8"
 embedded-graphics-core = "0.4"
-
+embedded-ttf = "0.2.2"
+# ───────────────────────────────────────────────────────────────────────
 # BLUETOOTH
 bt-hci = "0.6.0"
+# ───────────────────────────────────────────────────────────────────────
 # SD CARD
 embedded-sdmmc = "0.9.0"
-
+# ───────────────────────────────────────────────────────────────────────
 # EMBEDDED HAL
-embedded-io = { version = "0.7.1", features = ["defmt"] }
+embedded-io       = { version = "0.7.1", features = ["defmt"] }
 embedded-io-async = { version = "0.7.0", features = ["defmt"] }
-embedded-hal = "1.0"
-embedded-hal-bus = "0.3.0"
-embedded-storage = "0.3.1"
-
-
+embedded-hal      = "1.0"
+embedded-hal-bus  = "0.3.0"
+embedded-storage  = "0.3.1"
+# ───────────────────────────────────────────────────────────────────────
 # ASYNC RUNTIME
 embassy-executor = { version = "0.10.0", features = ["defmt"] }
-embassy-time = { version = "0.5.0", features = ["defmt"] }
-embassy-sync = { version = "0.8.0", features = ["defmt"] }
-embassy-futures = "0.1"
-
+embassy-time     = { version = "0.5.0", features = ["defmt"] }
+embassy-sync     = { version = "0.8.0", features = ["defmt"] }
+embassy-futures  = "0.1"
+# ───────────────────────────────────────────────────────────────────────
 # WIFI & NETWORK STACK
 esp-radio = { version = "0.18.0", features = [
-  "ble",
-  "coex",
-  "defmt",
-  "esp-alloc",
-  "esp32s3",
-#  "smoltcp",
-  "unstable",
-  "wifi",
+    "ble",
+    "coex",
+    "defmt",
+    "esp-alloc",
+    "esp32s3",
+    "unstable",
+    "wifi",
 ] }
 embassy-net = { version = "0.9.0", features = [
-  "defmt",
-  "dns",
-  "dhcpv4",
-  "medium-ethernet",
-  "tcp",
-  "udp",
+    "defmt",
+    "dns",
+    "dhcpv4",
+    "medium-ethernet",
+    "tcp",
+    "udp",
 ] }
 smoltcp = { version = "0.12.0", default-features = false, features = [
-  "defmt",
-  "medium-ethernet",
-  "multicast",
-  "proto-dhcpv4",
-  "proto-dns",
-  "proto-ipv4",
-  "socket-dns",
-  "socket-icmp",
-  "socket-raw",
-  "socket-tcp",
-  "socket-udp",
+    "defmt",
+    "medium-ethernet",
+    "multicast",
+    "proto-dhcpv4",
+    "proto-dns",
+    "proto-ipv4",
+    "socket-dns",
+    "socket-icmp",
+    "socket-raw",
+    "socket-tcp",
+    "socket-udp",
 ] }
 trouble-host = { version = "0.5.0", features = ["gatt"] }
-# Seed
+# SEED
 rand_core = "0.6"
-
-# Misc/logging
+# ───────────────────────────────────────────────────────────────────────
+# MISC/LOGGING
 critical-section = "1.2.0"
 static_cell = "2.1.1"
 defmt = "1.0.1"
 defmt-rtt = "1.1.0"
 esp-println = { version = "0.16.1", features = ["defmt-espflash", "esp32s3"] }
 heapless = "0.8"
-
-
-# Math
+# USED FOR CUSTOM FONTS
+rusttype = { version = "0.9.2", default-features = false }
+# ───────────────────────────────────────────────────────────────────────
+# MATH
 micromath = "2.1.0"
 libm = "0.2"
 nanomp3 = { version = "0.1.1", default-features = false }
 
 
-
+# ───────────────────────────────────────────────────────────────────────
+# PATCHES
+# SPECIFIC COMMIT/BRANCH INSTEAD OF CRATES.IO
 [patch.crates-io]
 embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sdmmc-rs", branch = "develop" }
 
-[profile.dev]
-opt-level = "s"
 
+# ───────────────────────────────────────────────────────────────────────
+# STANDARD RELEASE PROFILE
 [profile.release]
 codegen-units = 1
 debug = 2
@@ -138,3 +139,10 @@ incremental = false
 lto = 'fat'
 opt-level = 's'
 overflow-checks = false
+
+
+# ───────────────────────────────────────────────────────────────────────
+# DEVELOPMENT PROFILE
+# WHEN RAN WITHOUT `--release`
+[profile.dev]
+opt-level = "s"

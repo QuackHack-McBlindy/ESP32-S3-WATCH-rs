@@ -1,6 +1,7 @@
 // COMPONENTS/AXP2101
 // AXP2101 - POWER MANAGEMENT UNIT DRIVER
 
+
 use embedded_hal::i2c::I2c;
 
 // REGISTER ADDRESSES
@@ -33,7 +34,7 @@ const REG_LDO_VOL0: u8 = 0x92;      // ALDO1 VOLTAGE
 const REG_BAT_PERCENT: u8 = 0xA4;
 const REG_CHG_STATUS: u8 = 0x01;    // REGISTER 0x01
 
-
+// ───────────────────────────────────────────────────────────────────────
 // PUBLIC TYPES & ENUMS
 /// CHARGER STATUS EXTRACTED FROM STATUS2 BITS 5‑7
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,6 +46,7 @@ pub enum ChargeStatus {
     Unknown = 3,
 }
 
+// ───────────────────────────────────────────────────────────────────────
 /// CONFIGURATION FOR INIT
 #[derive(Debug, Clone, Copy)]
 pub struct Axp2101Config {
@@ -63,6 +65,8 @@ impl Default for Axp2101Config {
     }
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
 /// DRIVER ERRORS
 #[derive(Debug)]
 pub enum Error<E> {
@@ -71,7 +75,7 @@ pub enum Error<E> {
     InvalidParameter,
 }
 
-
+// ───────────────────────────────────────────────────────────────────────
 // DRIVER STRUCT
 /// AXP2101 PMU DRIVER (ESP32‑S3 REGISTER LAYOUT)
 pub struct Axp2101;

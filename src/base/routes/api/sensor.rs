@@ -42,11 +42,18 @@ pub fn handle_sensor(req: tinyapi::Request<'_>) -> tinyapi::Response {
 // GET /API/SENSORS (SHOWS ALL SENSOR VALUES IN ONE CALL FORMATTED AS JSON)
 pub fn handle_sensors(_req: tinyapi::Request<'_>) -> tinyapi::Response {
     // LOAD EXISTING SENSORS
+    // BATTERY
     let battery_percent = crate::load!(crate::state::BATTERY_PERCENT);
     let battery_voltage = crate::load!(crate::state::BATTERY_VOLTAGE);
+    let battery_charging = crate::load!(crate::state::BATTERY_CHARGING);
+    let battery_need_charging = crate::load!(crate::state::BATTERY_NEED_CHARGING);
+    let battery_full = crate::load!(crate::state::BATTERY_FULL);
+    let battery_usb_connected = crate::load!(crate::state::BATTERY_USB_CONNECTED);
+        
     let rssi = crate::load!(crate::state::RSSI);
     let mic_vol = crate::load!(crate::state::MIC_VOLUME);
     let spk_vol = crate::load!(crate::state::SPEAKER_VOLUME);
+    let display_state = crate::load!(crate::state::DISPLAY_STATE);
     let brightness = crate::load!(crate::state::DISPLAY_BRIGHTNESS);
     let ip_raw = crate::load!(crate::state::CURRENT_IP);
     let ip = embassy_net::Ipv4Address::from(ip_raw);
@@ -77,14 +84,26 @@ pub fn handle_sensors(_req: tinyapi::Request<'_>) -> tinyapi::Response {
         let minutes = (time_secs % 3600) / 60;
         let seconds = time_secs % 60;
         alloc::format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
-    } else {
-        "unknown".into()
-    };
+    } else { "unknown".into() };
 
     // FORMAT AS JSON
     let response_str = alloc::format!(
-        "{{\"battery_percent\":{},\"battery_voltage\":{},\"rssi\":{},\"mic_volume\":{},\"speaker_volume\":{},\"brightness\":{},\"ip\":\"{}\",\"uptime\":\"{}\",\"time\":\"{}\",\"firmware\":\"{}\",\"media\":\"Nothing playing\"}}",
-        battery_percent, battery_voltage, rssi, mic_vol, spk_vol, brightness, ip, uptime_str, time_str, version
+        "{{\"battery_percent\":{},\"battery_voltage\":{},\"battery_charging\":{},\"battery_need_charging\":{},\"battery_full\":{},\"battery_usb_connected\":{},\"display_state\":{},\"rssi\":{},\"mic_volume\":{},\"speaker_volume\":{},\"brightness\":{},\"ip\":\"{}\",\"uptime\":\"{}\",\"time\":\"{}\",\"firmware\":\"{}\",\"media\":\"Nothing playing\"}}",
+        battery_percent,
+        battery_voltage,
+        battery_charging,
+        battery_need_charging,
+        battery_full,
+        battery_usb_connected,
+        display_state,
+        rssi,
+        mic_vol,
+        spk_vol,
+        brightness,
+        ip,
+        uptime_str,
+        time_str,
+        version
     );
 
     tinyapi::Response::text(&response_str)

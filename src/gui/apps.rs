@@ -1,7 +1,6 @@
 // GUI/APPS
 // FULL-SIZED APP LAUNCHER, ONE APP PER "PAGE" , SWIPE UP/DOWN SMOOTH SCROLL ANIMATION
 
-
 const PAGE_HEIGHT: i32 = crate::state::LCD_HEIGHT as i32;  // 502
 
 pub struct Launcher {
@@ -87,16 +86,14 @@ pub fn draw(
     let next_page = if progress == 0 { None } else { Some(current_page + 1) };
     let prev_page = if progress == 0 && offset > 0 { Some(current_page - 1) } else { None };
 
-    // BACKGROUND: ALWAYS BLLACK
+    // BACKGROUND: ALWAYS BLACK
     let bg_rect = embedded_graphics::primitives::Rectangle::new(
         Point::zero(),
         Size::new(screen_w as u32, screen_h as u32),
     );
-    let bg_styled = <embedded_graphics::primitives::Rectangle as embedded_graphics::primitives::Primitive>::into_styled(
+    let bg_styled = <embedded_graphics::primitives::Rectangle as embedded_graphics::prelude::Primitive>::into_styled(
         bg_rect,
-        embedded_graphics::primitives::PrimitiveStyle::with_fill(
-            <Rgb as embedded_graphics::pixelcolor::RgbColor>::BLACK,
-        ),
+        embedded_graphics::primitives::PrimitiveStyle::with_fill(crate::gui::colors::BLACK),
     );
     <embedded_graphics::primitives::Styled<
         embedded_graphics::primitives::Rectangle,
@@ -137,7 +134,7 @@ pub fn draw(
         // APP NAME BELOW ICON
         let name_font = embedded_graphics::mono_font::MonoTextStyle::new(
             &embedded_graphics::mono_font::ascii::FONT_10X20,
-            <Rgb as embedded_graphics::pixelcolor::RgbColor>::WHITE,
+            crate::gui::colors::WHITE,
         );
         let name_align = embedded_graphics::text::TextStyleBuilder::new()
             .alignment(embedded_graphics::text::Alignment::Center)

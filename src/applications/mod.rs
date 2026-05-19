@@ -1,10 +1,16 @@
 // APPLICATIONS/MOD
+
+
+// ───────────────────────────────────────────────────────────────────────
+// LOAD APP MODULES
 pub mod media_player;
-pub mod app2;
+pub mod settings;
 pub mod app3;
 pub mod house;
 
-/// DESCRIBES AN APPLICATION
+
+// ───────────────────────────────────────────────────────────────────────
+// DESCRIBES AN APPLICATION
 pub struct AppDescriptor {
     pub name: &'static str,
     pub description: &'static str,
@@ -22,10 +28,12 @@ pub enum GridSlot {
     BottomRight = 3,
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
 // FETCH ALL APPDESCRIPTIORS
 pub static APPS: &[AppDescriptor] = &[
     media_player::APP_DESCRIPTOR,
-    app2::APP_DESCRIPTOR,
+    settings::APP_DESCRIPTOR,
     app3::APP_DESCRIPTOR,
     house::APP_DESCRIPTOR,
 ];    

@@ -3,7 +3,6 @@
 // FILESYSTEM: FAT32
 // PROVIDES EVERYTHING NEEDED FOR:
 // SD CARD INIT ++ FUZZY SEARCHING FILES ON THE SD CARD FOR EASY VOICE COMMAND PLAYBACK  (be drunk & speak japanese, it's all good)
-// ALL OPERATIONS ARE PERFORMED INSIDE A CRITICAL SECTION TO AVOID LIFETIME COMPLICATIONS.
 
 extern crate alloc;
 use alloc::format;
@@ -11,11 +10,23 @@ use alloc::string::String;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
+// ───────────────────────────────────────────────────────────────────────
 // TYPES & GLOBAL STATE
 pub enum SdState {
     NotInserted,
     Mounted,
     Error,
+}
+
+#[derive(Debug, defmt::Format)] 
+pub enum SdError {
+    NotInitialized,
+    Volume,
+    RootDir,
+    Directory,
+    File,
+    Read,
+    Write,
 }
 
 // DUMMY TIME
@@ -33,11 +44,12 @@ type SpiDevice = embedded_hal_bus::spi::ExclusiveDevice<
 >;
 type SdCardType = embedded_sdmmc::SdCard<SpiDevice, esp_hal::delay::Delay>;
 type VolumeMgrType = embedded_sdmmc::VolumeManager<SdCardType, DummyTime>;
-type FileType<'a> = embedded_sdmmc::File<'a, SdCardType, DummyTime, 8, 4, 1>;
+type FileType<'a> = embedded_sdmmc::File<'a, SdCardType, DummyTime, 12, 12, 1>;
 
 static VOL_MGR: critical_section::Mutex<core::cell::RefCell<Option<VolumeMgrType>>> = critical_section::Mutex::new(core::cell::RefCell::new(None));
 
 
+// ───────────────────────────────────────────────────────────────────────
 // INITIATE SD CARD DRIVER (CALL FROM MAIN)
 pub fn init(card: SdCardType) {
     let vol_mgr = embedded_sdmmc::VolumeManager::new(card, DummyTime);
@@ -46,6 +58,7 @@ pub fn init(card: SdCardType) {
     });
 }
 
+// ───────────────────────────────────────────────────────────────────────
 // FUZZY SEARCH SONGS 
 pub fn search_song(query: &str) -> Option<(String, u8)> {
     defmt::info!("🪄 fuzzy searching: {}", query);
@@ -113,6 +126,96 @@ pub fn search_song(query: &str) -> Option<(String, u8)> {
     })
 }
 
+
+pub fn search_top_n(query: &str, n: usize) -> Vec<(String, u8)> {
+    // GRAB ALL FILENAMES FROM `/Music` (inside crit section)
+    let filenames: Vec<String> = critical_section::with(|cs| {
+        let mut guard = VOL_MGR.borrow(cs).borrow_mut();
+        let vol_mgr = match guard.as_mut() {
+            Some(v) => v,
+            None => return Vec::new(),
+        };
+
+        let volume = vol_mgr.open_raw_volume(embedded_sdmmc::VolumeIdx(0)).ok();
+        let volume = match volume {
+            Some(v) => v,
+            None => return Vec::new(),
+        };
+        let root_dir = vol_mgr.open_root_dir(volume).ok();
+        let root_dir = match root_dir {
+            Some(d) => d,
+            None => { vol_mgr.close_volume(volume).ok(); return Vec::new(); }
+        };
+        let music_dir = vol_mgr.open_dir(root_dir, "Music").ok();
+        let music_dir = match music_dir {
+            Some(d) => d,
+            None => { vol_mgr.close_dir(root_dir).ok(); vol_mgr.close_volume(volume).ok(); return Vec::new(); }
+        };
+
+        let mut names = Vec::new();
+        let mut lfn_storage = [0u8; 256];
+        let mut lfn_buf = embedded_sdmmc::LfnBuffer::new(&mut lfn_storage);
+
+        let _ = vol_mgr.iterate_dir_lfn(music_dir, &mut lfn_buf, |entry, lfn| {
+            if !entry.attributes.is_directory() {
+                let name = if let Some(l) = lfn {
+                    l.to_string()
+                } else {
+                    let base = core::str::from_utf8(&entry.name.base_name()).unwrap_or("");
+                    let ext  = core::str::from_utf8(&entry.name.extension()).unwrap_or("");
+                    if ext.is_empty() {
+                        alloc::format!("{}", base.trim())
+                    } else {
+                        alloc::format!("{}.{}", base.trim(), ext.trim())
+                    }
+                };
+                names.push(name);
+            }
+            core::ops::ControlFlow::Continue(())
+        });
+
+        let _ = vol_mgr.close_dir(music_dir);
+        let _ = vol_mgr.close_dir(root_dir);
+        let _ = vol_mgr.close_volume(volume);
+        names
+    });
+
+    // RUN FUZZY MATCHING (outside critical section)
+    let cands: Vec<&[u8]> = filenames.iter().map(|s| s.as_bytes()).collect();
+    let matches = barely_fuzzy::best_fuz_n(query.as_bytes(), &cands, n, 5);
+
+    // CONVERT BACK TO OWNED STRINGS
+    matches.into_iter()
+        .map(|(bytes, score)| {
+            let name = core::str::from_utf8(bytes).unwrap_or("").to_string();
+            (name, score)
+        })
+        .collect()
+}
+
+// CREATES `/Music/playlist.m3u` WITH TOP 10 MATCHES.
+// RETURNS THE PLAYLIST OR AN ERROR
+pub fn generate_playlist(query: &str) -> Result<String, SdError> {
+    let top = search_top_n(query, 10);
+    if top.is_empty() {
+        defmt::info!("🧙‍♂️ No match found!");
+        return Err(SdError::File);
+    }
+
+    // BUILD M3U CONTENT
+    let mut content = String::new();
+    content.push_str("#EXTM3U\n");
+    for (name, score) in &top {
+        content.push_str(&alloc::format!("#EXTINF:-1,{} ({}%)\n", name, score));
+        content.push_str(&alloc::format!("{}\n", name));
+    }
+
+    let path = "/Music/playlist.m3u";
+    write_file(path, content.as_bytes())?;
+    Ok(path.to_string())
+}
+
+// ───────────────────────────────────────────────────────────────────────
 // GET THE SIZE OF A FILE (BYTES) BY FULL PATH
 pub fn file_size(path: &str) -> Result<u32, SdError> {
     defmt::debug!("file_size: path='{}'", path);
@@ -238,10 +341,12 @@ pub fn read_file(path: &str, buffer: &mut [u8]) -> Result<usize, SdError> {
 }
 
 
+// ───────────────────────────────────────────────────────────────────────
+// STREAM FILE
+
 // STREAMING FILE READER – HOLDS THE VOLUME MANAGER LOCK WHILE THE FILE IS OPEN.
 pub struct SdFileStream {
     volume: embedded_sdmmc::RawVolume,
-    //root_dir: embedded_sdmmc::RawDirectory,
     dir: embedded_sdmmc::RawDirectory,
     raw_file: embedded_sdmmc::RawFile,
 }
@@ -295,9 +400,9 @@ pub fn open_file_stream(path: &str) -> Result<SdFileStream, SdError> {
         let (dir_name, file_name) = split_path(path);
 
         let dir = if dir_name.is_empty() {
-            root_dir // use root_dir directly; it will be closed in Drop
+            root_dir // CLOSED IN DROP
         } else {
-            // open subdirectory, then immediately close the root handle
+            // OPEN SUBDIR, THEN CLOSE THE ROOT HANDLE
             let sub_dir = vol_mgr
                 .open_dir(root_dir, dir_name.as_str())
                 .map_err(|_| SdError::Directory)?;
@@ -317,6 +422,68 @@ pub fn open_file_stream(path: &str) -> Result<SdFileStream, SdError> {
     })
 }
 
+// STREAMING FILE WRITER – HANDS OUT RAW HANDLES, DROP CLEANS UP
+pub struct SdFileWriter {
+    raw_file: embedded_sdmmc::RawFile,
+    volume: embedded_sdmmc::RawVolume,
+    dir: embedded_sdmmc::RawDirectory,
+}
+
+impl SdFileWriter {
+    pub fn write_all(&mut self, buf: &[u8]) -> Result<(), SdError> {
+        critical_section::with(|cs| {
+            let mut guard = VOL_MGR.borrow(cs).borrow_mut();
+            let vol_mgr = guard.as_mut().ok_or(SdError::NotInitialized)?;
+            vol_mgr
+                .write(self.raw_file, buf)
+                .map_err(|_| SdError::Write)
+        })
+    }
+
+    pub fn close(self) -> Result<(), SdError> {
+        let result = critical_section::with(|cs| {
+            let mut guard = VOL_MGR.borrow(cs).borrow_mut();
+            let vol_mgr = guard.as_mut().ok_or(SdError::NotInitialized)?;
+            vol_mgr.close_file(self.raw_file).map_err(|_| SdError::Write)?;
+            vol_mgr.close_dir(self.dir).map_err(|_| SdError::Directory)?;
+            vol_mgr.close_volume(self.volume).map_err(|_| SdError::Volume)
+        });
+        core::mem::forget(self);
+        result
+    }
+}
+
+impl Drop for SdFileWriter {
+    fn drop(&mut self) {
+        critical_section::with(|cs| {
+            let mut guard = VOL_MGR.borrow(cs).borrow_mut();
+            if let Some(vol_mgr) = guard.as_mut() {
+                let _ = vol_mgr.close_file(self.raw_file);
+                let _ = vol_mgr.close_dir(self.dir);
+                let _ = vol_mgr.close_volume(self.volume);
+            }
+        });
+    }
+}
+
+impl tinyapi::ChunkWriter for SdFileWriter {
+    type Error = SdError;
+    fn write_all(&mut self, buf: &[u8]) -> Result<(), SdError> {
+        self.write_all(buf)
+    }
+}
+
+impl tinyapi::ChunkReader for SdFileStream {
+    type Error = SdError;
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
+        self.read(buf)
+    }
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// HELPERS
+
+// SPLIT PATH
 fn split_path(full: &str) -> (String, String) {
     let stripped = full.trim_start_matches('/');
     if let Some(pos) = stripped.rfind('/') {
@@ -328,12 +495,211 @@ fn split_path(full: &str) -> (String, String) {
     }
 }
 
-#[derive(Debug, defmt::Format)] 
-pub enum SdError {
-    NotInitialized,
-    Volume,
-    RootDir,
-    Directory,
-    File,
-    Read,
+// CONVERT LFN TO SFN
+fn to_short_filename(name: &str) -> String {
+    let (base, ext) = match name.rfind('.') {
+        Some(pos) => (&name[..pos], &name[pos+1..]),
+        None => (name, ""),
+    };
+    let short_base = if base.len() > 8 { &base[..8] } else { base };
+
+    let short_ext = if ext.len() > 3 { &ext[..3] } else { ext };
+    if short_ext.is_empty() {
+        short_base.to_string()
+    } else {
+        alloc::format!("{}.{}", short_base, short_ext)
+    }
 }
+
+
+// WRITE AN ENTIRE SLICE TO A FILE AT `path`
+// CREATES THE FILE IF IT EXISTS
+pub fn write_file(path: &str, data: &[u8]) -> Result<(), SdError> {
+    let mut file = create_file_for_writing(path)?;
+    file.write_all(data)?;
+    file.close()?;
+    Ok(())
+}
+
+// READ THE WHOLE FILE INTO A `Vec<u8>`
+pub fn read_file_to_vec(path: &str) -> Result<Vec<u8>, SdError> {
+    let size = file_size(path)?;
+    // LIMIT BY SIZE
+    if size > 4_000_000 {
+        return Err(SdError::File);
+    }
+    let mut buffer = Vec::with_capacity(size as usize);
+    // SAFETY FIRST: JUST ALLOCATE THE VEC
+    let mut tmp = [0u8; 512];
+    let mut stream = open_file_stream(path)?;
+    loop {
+        let n = stream.read(&mut tmp)?;
+        if n == 0 {
+            break;
+        }
+        buffer.extend_from_slice(&tmp[..n]);
+    }
+    Ok(buffer)
+}
+
+
+// OPEN A FILE FOR WRITING. THE FILE IS CREATED IF IT DOES NOT EXIST,
+// DIR MUST EXIST!
+pub fn create_file_for_writing(path: &str) -> Result<SdFileWriter, SdError> {
+    defmt::info!("create_file_for_writing: '{}'", path);
+
+    critical_section::with(|cs| {
+        let mut guard = VOL_MGR.borrow(cs).borrow_mut();
+        let vol_mgr = match guard.as_mut() {
+            Some(v) => v,
+            None => {
+                defmt::error!("VolumeManager not initialized");
+                return Err(SdError::NotInitialized);
+            }
+        };
+
+        // OPEN VOLUME
+        let volume = vol_mgr
+            .open_raw_volume(embedded_sdmmc::VolumeIdx(0))
+            .map_err(|_| {
+                defmt::error!("open_raw_volume failed");
+                SdError::Volume
+            })?;
+
+        // OPEN ROOT DIR
+        let root_dir = vol_mgr
+            .open_root_dir(volume)
+            .map_err(|_| {
+                defmt::error!("open_root_dir failed");
+                // CLOSE VOLUME INB4 RETURNING ERROR
+                vol_mgr.close_volume(volume).ok();
+                SdError::RootDir
+            })?;
+
+        let (dir_name, file_name) = split_path(path);
+        defmt::debug!("dir='{}', file='{}'", dir_name.as_str(), file_name.as_str());
+
+        // OPEN TARGET DIR 
+        let dir = if dir_name.is_empty() {
+            root_dir
+        } else {
+            match vol_mgr.open_dir(root_dir, dir_name.as_str()) {
+                Ok(sub) => {
+                    vol_mgr.close_dir(root_dir).ok(); // root no longer needed
+                    sub
+                }
+                Err(_) => {
+                    defmt::error!("open_dir '{}' failed", dir_name.as_str());
+                    // CLEANUP
+                    vol_mgr.close_dir(root_dir).ok();
+                    vol_mgr.close_volume(volume).ok();
+                    return Err(SdError::Directory);
+                }
+            }
+        };
+
+        // CONVERT TO 8.3 SHORT NAME
+        let short_name = to_short_filename(&file_name);
+        defmt::debug!("short name: '{}'", short_name);
+
+        // OPEN/CREATE/TRUNCATE FILE
+        let raw_file = vol_mgr
+            .open_file_in_dir(
+                dir,
+                short_name.as_str(),
+                embedded_sdmmc::Mode::ReadWriteCreateOrTruncate,
+            )
+            .map_err(|_| {
+                defmt::error!("open_file_in_dir '{}' failed", short_name.as_str());
+                // CLEANUP
+                vol_mgr.close_dir(dir).ok();
+                vol_mgr.close_volume(volume).ok();
+                SdError::File
+            })?;
+
+        defmt::debug!("file created successfully");
+        Ok(SdFileWriter {
+            raw_file,
+            volume,
+            dir,
+        })
+    })
+}
+
+// LIST ALL ENTRIES IN DIR
+pub fn list_dir(path: &str) -> Result<Vec<(String, bool, u32)>, SdError> {
+    critical_section::with(|cs| {
+        let mut guard = VOL_MGR.borrow(cs).borrow_mut();
+        let vol_mgr = guard.as_mut().ok_or(SdError::NotInitialized)?;
+
+        let volume = vol_mgr.open_raw_volume(embedded_sdmmc::VolumeIdx(0))
+            .map_err(|_| SdError::Volume)?;
+        let root_dir = vol_mgr.open_root_dir(volume)
+            .map_err(|_| SdError::RootDir)?;
+
+        let (dir_name, _) = split_path(path);
+        let dir = if dir_name.is_empty() {
+            root_dir
+        } else {
+            let sub = vol_mgr.open_dir(root_dir, dir_name.as_str())
+                .map_err(|_| SdError::Directory)?;
+            vol_mgr.close_dir(root_dir).ok();
+            sub
+        };
+
+        let mut entries = Vec::new();
+        let mut lfn_storage = [0u8; 256];
+        let mut lfn_buf = embedded_sdmmc::LfnBuffer::new(&mut lfn_storage);
+
+        let _ = vol_mgr.iterate_dir_lfn(dir, &mut lfn_buf, |entry, lfn| {
+            if !entry.attributes.is_volume() {
+                let name = if let Some(lfn) = lfn {
+                    lfn.to_string()
+                } else {
+                    let base = core::str::from_utf8(&entry.name.base_name()).unwrap_or("");
+                    let ext = core::str::from_utf8(&entry.name.extension()).unwrap_or("");
+                    if ext.is_empty() { base.trim().to_string() }
+                    else { format!("{}.{}", base.trim(), ext.trim()) }
+                };
+                entries.push((name, entry.attributes.is_directory(), entry.size));
+            }
+            core::ops::ControlFlow::Continue(())
+        });
+
+        let _ = vol_mgr.close_dir(dir);
+        let _ = vol_mgr.close_volume(volume);
+        Ok(entries)
+    })
+}
+
+// DELETE A FILE BY FULL PATH
+pub fn delete_file(path: &str) -> Result<(), SdError> {
+    critical_section::with(|cs| {
+        let mut guard = VOL_MGR.borrow(cs).borrow_mut();
+        let vol_mgr = guard.as_mut().ok_or(SdError::NotInitialized)?;
+
+        let volume = vol_mgr.open_raw_volume(embedded_sdmmc::VolumeIdx(0))
+            .map_err(|_| SdError::Volume)?;
+        let root_dir = vol_mgr.open_root_dir(volume)
+            .map_err(|_| SdError::RootDir)?;
+
+        let (dir_name, file_name) = split_path(path);
+        let dir = if dir_name.is_empty() {
+            root_dir
+        } else {
+            let sub = vol_mgr.open_dir(root_dir, dir_name.as_str())
+                .map_err(|_| SdError::Directory)?;
+            vol_mgr.close_dir(root_dir).ok();
+            sub
+        };
+
+        let short_name = to_short_filename(&file_name);
+        vol_mgr.delete_entry_in_dir(dir, short_name.as_str())
+            .map_err(|_| SdError::File)?;
+
+        vol_mgr.close_dir(dir).ok();
+        vol_mgr.close_volume(volume).ok();
+        Ok(())
+    })
+}
+

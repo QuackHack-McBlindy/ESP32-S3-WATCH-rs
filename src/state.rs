@@ -1,24 +1,22 @@
 // STATE MACHINE 
 // CHIP GPIO, CONFIGURATION DEFINITIONS
-// ++ ME STATE TRACKER
-// ++ INIT ATOMIC VARIABLES
-
-// ME (QUACKHACK-MCBLINDY)
-// TRACK ME - I MIGHT BE LOST
-crate::init_bool!(ME_HOME, true);
-crate::init_bool!(ME_SLEEPING, false);
-crate::init_bool!(ME_DND, false);
+// ++ CURRENT STATES AS ATOMIC VARIABLES 
 
 
+// ───────────────────────────────────────────────────────────────────────
 // THIS FIRMWARE
 pub const FW_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const PROJECT_NAME: &str = env!("CARGO_PKG_NAME");
 
+
+// ───────────────────────────────────────────────────────────────────────
 // TIME RELATED
 crate::init_u32!(UPTIME_SECS, 0);      // SECONDS SINCE BOOT
 crate::init_u32!(CURRENT_TIME_SECS, 0);// SECONDS SINCE MIDNIGHT
 
-// NETWORK
+
+// ───────────────────────────────────────────────────────────────────────
+// NETWORK RELATED
 crate::init_u32!(CURRENT_IP, 0);
 crate::init_i32!(RSSI, 0);
 crate::init_bool!(WIFI_CONNECTED, false);
@@ -39,7 +37,9 @@ pub const WIFI_CREDENTIALS: &[(&str, &str)] = &[
 pub const BACKEND_TCP_HOST: &str = env!("BACKEND_TCP_HOST");
 pub const BACKEND_TCP_PORT_STR: &str = env!("BACKEND_TCP_PORT");
 
-// DISPLAY (CO5300)
+
+// ───────────────────────────────────────────────────────────────────────
+// DISPLAY RELATED
 pub const LCD_SDIO0: u8 = 4;
 pub const LCD_SDIO1: u8 = 5;
 pub const LCD_SDIO2: u8 = 6;
@@ -52,40 +52,60 @@ pub const LCD_HEIGHT: u16 = 502;
 pub const LCD_COL_OFFSET: u16 = 22;
 pub const LCD_ROW_OFFSET: u16 = 0;
 
+// TE (TEARING EFFECT SYNC)
+crate::init_u8!(LCD_TE, 13);
+
 crate::init_bool!(DISPLAY_STATE, false);
 crate::init_bool!(DISPLAY_DIRTY, false);
-crate::init_u8!(DISPLAY_BRIGHTNESS, 70);
+crate::init_u8!(DISPLAY_BRIGHTNESS, 35);
 crate::init_u32!(DISPLAY_TIMEOUT_SECS, 20);
 
-// I2C Bus
+// MAX CALLER LENGTH
+pub const MAX_DISPLAY_STRING_LEN: usize = 32;
+
+// STORAGE FOR CALLER ID
+pub static DISPLAY_STRING: critical_section::Mutex<core::cell::RefCell<Option<heapless::String<MAX_CALLER_NAME_LEN>>>> = critical_section::Mutex::new(core::cell::RefCell::new(None));
+
+// ───────────────────────────────────────────────────────────────────────
+// I2C 
 crate::init_u8!(I2C_SDA, 15);
 crate::init_u8!(I2C_SCL, 14);
 pub const I2C_FREQ_HZ: u32 = 400_000;
 
-// TOUCH (FT3168)
+
+// ───────────────────────────────────────────────────────────────────────
+// TOUCH RELATED
 crate::init_u8!(TP_INT, 38);
 crate::init_u8!(TP_RESET, 9);
 crate::init_u8!(TP_I2C_ADDR, 0x38);
 
-// PMU (AXP2101)
+
+// ───────────────────────────────────────────────────────────────────────
+// PMU RELATED
 crate::init_u8!(PMIC_I2C_ADDR, 0x34);
 crate::init_bool!(POWER_STATE, true);
 
-// BATTERY
+
+// ───────────────────────────────────────────────────────────────────────
+// BATTERY RELATED
 crate::init_u8!(BATTERY_PERCENT, 100);
 crate::init_u32!(BATTERY_VOLTAGE, 0);
 crate::init_bool!(BATTERY_CHARGING, false);
 crate::init_bool!(BATTERY_NEED_CHARGING, false);
 crate::init_bool!(BATTERY_FULL, false);
 crate::init_bool!(BATTERY_USB_CONNECTED, false);
-// init_..!(BATTERY_VOLTAGE_MV, 0);
 
-// IMU (QMI8658)
+
+
+// ───────────────────────────────────────────────────────────────────────
+// IMU RELATED
 crate::init_u8!(IMU_I2C_ADDR, 0x6B);
 // IMU INTERRUPT
 crate::init_u8!(IMU_INT, 21);
 
-// RTC (PCF85063A)
+
+// ───────────────────────────────────────────────────────────────────────
+// RTC RELATED
 crate::init_u8!(RTC_I2C_ADDR, 0x51);
 
 pub static CURRENT_TIME: critical_section::Mutex<core::cell::Cell<Option<crate::components::pcf85063a::DateTime>>> =
@@ -94,14 +114,17 @@ pub static CURRENT_TIME: critical_section::Mutex<core::cell::Cell<Option<crate::
 // RTC INTERRUPT
 crate::init_u8!(RTC_INT, 39);
 
-// SD CARD
+
+// ───────────────────────────────────────────────────────────────────────
+// SD CARD RELATED
 crate::init_u8!(SD_CLK, 2);
 crate::init_u8!(SD_CMD, 1);
 crate::init_u8!(SD_DATA, 3);
 crate::init_u8!(SD_CS, 17);
 
-// DISPLAY TE (TEARING EFFECT SYNC)
-crate::init_u8!(LCD_TE, 13);
+
+// ───────────────────────────────────────────────────────────────────────
+// AUDIO RELATED
 
 // I2S AUDIO GPIO
 crate::init_u8!(I2S_MCLK, 16);
@@ -160,8 +183,23 @@ impl From<u8> for MediaCommand {
 }
 
 
+// ───────────────────────────────────────────────────────────────────────
 // BUTTONS
 crate::init_u8!(BOOT_BUTTON, 0);
 crate::init_bool!(BOOT_BUTTON_PRESSED, false);
 crate::init_u8!(PWR_BUTTON, 10);
 crate::init_bool!(PWR_BUTTON_PRESSED, false);
+
+
+// ───────────────────────────────────────────────────────────────────────
+// CALL RELATED
+
+// MAX CALLER LENGTH
+pub const MAX_CALLER_NAME_LEN: usize = 32;
+
+// STORAGE FOR CALLER ID
+pub static CALLER_NAME: critical_section::Mutex<core::cell::RefCell<Option<heapless::String<MAX_CALLER_NAME_LEN>>>> = critical_section::Mutex::new(core::cell::RefCell::new(None));
+
+
+// ───────────────────────────────────────────────────────────────────────
+
