@@ -1,3 +1,6 @@
+// BASE/ROUTES/API/SETTINGS/DISPLAY/STATE
+
+
 // GET /API/SETTINGS/DISPLAY
 pub fn display_state_handler(req: tinyapi::Request<'_>) -> tinyapi::Response {
     let value = req.param("value").unwrap_or("toggle");

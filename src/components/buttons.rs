@@ -3,7 +3,6 @@
 // DEFINES PRESS/HOLD ACTIONS (HOLD POWER 5 SEC FOR DEEP SLEEP/WAKEUP)
 
 
-
 async fn wait_for_release(button: &mut esp_hal::gpio::Input<'_>) {
     while button.is_low() {
         embassy_time::Timer::after(embassy_time::Duration::from_millis(10)).await;
@@ -15,41 +14,36 @@ async fn wait_for_release(button: &mut esp_hal::gpio::Input<'_>) {
 // BUTTON TASK
 #[embassy_executor::task]
 pub async fn buttons_task(
-    boot_button: esp_hal::gpio::Input<'static>,
+    mut boot_button: esp_hal::gpio::Input<'static>,
     pwr_button: esp_hal::gpio::Input<'static>,
 ) {
+    let mut boot_was_pressed = false;
     let mut boot_press_start: Option<embassy_time::Instant> = None;
     let mut pwr_press_start: Option<embassy_time::Instant> = None;
 
     loop {
         // ───────────────────────────────────────────────────────────────────────
         // BOOT BUTTON
-        if boot_button.is_low() {
-            // PRESSED: TODO
-            // PLAYING MEDIA? INCREASE VOLUME
-            if boot_press_start.is_none() {
-                defmt::debug!("BOOT BUTTON PRESSED");
-                boot_press_start = Some(embassy_time::Instant::now());
-                
-                // PRESSSED WHILE PLAYING MEDIA: INCREASE SPEAKER VOLUME
-                if crate::load!(crate::state::MEDIA_IS_PLAYING) {
-                    crate::applications::media_player::volume_up();
-                }
+        let boot_now = boot_button.is_low();
+
+        if boot_now {
+            if crate::load!(crate::state::MEDIA_IS_PLAYING) {
+                // MEDIA IS PLAYING > VOLUME UP
+                crate::applications::media_player::volume_up();
+            } else {
+                // NO MEDIA > START PUSH-TO-TALK RECORDING
+                let _ = yo_esp::VOICE_CMD.send(yo_esp::VoiceCommand::Pushed).await;
+
+                // HOLD THE TASK HERE UNTIL THE BUTTON IS RELEASED
+                wait_for_release(&mut boot_button).await;
+
+                // RELEASED - END PTT RECORDING
+                let _ = yo_esp::VOICE_CMD.send(yo_esp::VoiceCommand::Released).await;
             }
 
-            // HOLD ACTIONS
-            if let Some(start) = boot_press_start {
-                if embassy_time::Instant::now() - start
-                    >= embassy_time::Duration::from_secs(2)
-                { // HOLD 2 SEC: TODO
-                  // HOLD 5 SEC: ???
-                    defmt::info!("BOOT HELD DOWN 2 SECONDS");
-
-                    // PREVENTS REPEATED SPAM
-                    boot_press_start = None;
-                }
-            }
-        } else { boot_press_start = None; }
+            // DEBOUNCE
+            embassy_time::Timer::after(embassy_time::Duration::from_millis(50)).await;
+        }
 
 
         // ───────────────────────────────────────────────────────────────────────

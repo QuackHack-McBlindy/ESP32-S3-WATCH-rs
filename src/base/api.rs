@@ -81,6 +81,13 @@ pub async fn init_routes() {
     tinyapi::register_route("/api/settings/speaker/mute/{value}", crate::base::routes::api::settings::speaker::mute::speaker_mute_handler).await;  
 
     // ───────────────────────────────────────────────────────────────────────
+    // /API/SETTINGS/VOICE (GET)
+    
+    // WAKEWORD (on/off) 
+    tinyapi::register_route("/api/settings/voice/wakeword/{value}", crate::base::routes::api::settings::voice::wakeword::wake_word_handler).await;
+    
+
+    // ───────────────────────────────────────────────────────────────────────
     // /API/SETTINGS/DISPLAY (GET)
     
     // BRIGHTNESS
@@ -102,7 +109,7 @@ pub async fn init_routes() {
     // /API/SETTINGS/WIFI (GET)
     
     // OFF 
-    // ... (TODO)
+    tinyapi::register_route("/api/settings/wifi/off", crate::base::routes::api::settings::wifi::off::disable_wifi).await;
 
     // SET/SSID/{SSID}/PASSWORD/{PASSWORD}
     // ... (TODO)

@@ -110,7 +110,7 @@ async fn display_task(
     display.set_brightness(0xB3); // 70%
     // START WITH THE SCREEN OFF
     // WAKE IT UP BY SAYING: (OR TOUCHING SCREEN)
-    // `YO BITCH!` (YOUR WAKE WORD)
+    // `YO BITCH!` (IF WAKE WORD ENABLED)
     display.display_off();
 
     // STATE VARIABLES 
@@ -319,9 +319,10 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     let sd_spi_dev = embedded_hal_bus::spi::ExclusiveDevice::new_no_delay(sd_spi, sd_cs).unwrap();
     let sd_card = embedded_sdmmc::SdCard::new(sd_spi_dev, esp_hal::delay::Delay::new());
 
-    // MOVES OWNERSHIP INTO THE MODULE 
-    crate::components::storage::init(sd_card);    
-    defmt::info!("STORAGE Successful initialization");
+    // MOVES OWNERSHIP INTO THE MODULE
+    crate::components::storage::init(sd_card, &spawner);
+    // SD CARD NOW CONFIGURED - BUT NOT INITIATED (TO SAVE BATTERY)
+    defmt::info!("STORAGE Successfully setup, awaiting initialization");
     
 
     // ───────────────────────────────────────────────────────────────────────

@@ -121,7 +121,7 @@ crate::init_u8!(SD_CLK, 2);
 crate::init_u8!(SD_CMD, 1);
 crate::init_u8!(SD_DATA, 3);
 crate::init_u8!(SD_CS, 17);
-
+crate::init_bool!(SD_READY, false);
 
 // ───────────────────────────────────────────────────────────────────────
 // AUDIO RELATED

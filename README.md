@@ -21,7 +21,7 @@ Designed to be used as a personal voice assistant watch with **EXTENSIVE** custo
 
 <br>
 Be sure to check out the demo usage videos/pictures down below.  
-<br><br>
+<br>
 
 Its up to [yo](https://github.com/QuackHack-McBlindy/yo) to write your own voice commands.  
 My watch can execute **57** different [scripts](https://github.com/QuackHack-McBlindy/dotfiles), and understands **272684913**  different phrases as voice commands **-- with a average processing time of 2,72 ms per command**.  
@@ -53,7 +53,7 @@ The top-tier performance come from a **deterministic** voice architecture and sm
 - [♥️ Sponsor](#sponsor)
 - [License](#license)
 
-<br><br>  
+<br>  
 
 
 ## **Demo**
@@ -113,7 +113,7 @@ Turn up volume & hit play.
 
 There is a video demo from the web-based Qwackify too down below.  
 
-<br><br>
+<br>
 
 
 ## **Overview**
@@ -132,7 +132,7 @@ The watch also has an internal API serving GET endpoints for controlling options
 **From the watch:** tap the boot button to open the app launcher, swipe down to the app `Qwackify` and double tap it to open then press play.  <br>
 **Using your voice, say:** `yo bitch! play the duck song`.  
 
-<br><br>
+<br>
 
 ## **Project Structure & Design**  
 
@@ -195,7 +195,7 @@ I also prefer to have some of the extensive code as library crates, it can be us
 ```
 
 
-<br><br>
+<br>
 
 
 ## **Roadmap**
@@ -215,7 +215,7 @@ Extend with more crazy ideas as they pop up. `ESP32-S3-WATCH-rs` is still under 
 - [x] i2s: TX Speaker  
 - [x] i2s: Simultaneous RX & TX  (Full-Duplex)
 - [x] Voice Command Execution (Wake word, speech to shell command)
-- [ ] Push-to-talk feature (more battery effecient)
+- [x] Push-to-talk feature (more battery effecient)
 - [x] Media Player - Stream any audio to speaker (wav, mp3, flac, mp4, ...)
 - [x] Fuzzy search & play local media from the SD card. (with downsampling) 
 - [x] Intercom `ffmpeg -f alsa -i default -f s16le -ar 16000 -ac 2 - | nc <ESP_IP> 12345`
@@ -238,7 +238,7 @@ This is where your `ESP32-S3` microphone audio will be streamed.
   - Control any device option with your voice!
 
 
-<br><br>
+<br>
 
 
 ## **Installation**
@@ -309,7 +309,7 @@ $ docker compose up
 </details>
 
 
-<br><br>
+<br>
 
 ## **Usage**
 
@@ -328,7 +328,7 @@ https://github.com/user-attachments/assets/bdbd0250-b683-4ffa-b8cb-817d0589df1a
 https://github.com/user-attachments/assets/91760f4f-0f31-439e-bc6b-8d2960c62cd8
 
 
-<br><br>
+<br>
 
 
 ### **API**    
@@ -366,6 +366,7 @@ curl http://<ESP_IP>/api/settings/display/brightness/75
 | `/api/settings/mic/mute/{value}` | Mute/unmute mic: `1`/`on`/`mute`, `0`/`off`/`unmute`, or `toggle` |
 | `/api/settings/speaker/volume/{value}` | Set speaker volume (0–100%) |
 | `/api/settings/speaker/mute/{value}` | Mute/unmute speaker: same options as mic mute |
+| `/api/settings/voice/wakeword/{value}` | GET | Enable/disable wake‑word streaming (`on`, `off`, `enable`, `disable`) |
 | `/api/settings/display/brightness/{value}` | Set backlight brightness (0–100%). `{value}` as integer percent |
 | `/api/settings/display/state/{value}` | Set display state (on/off). |
 | `/api/settings/display/call/{value}` | Run this endpoiint with the callers name from iPhone when you receieve a phone call to display the calling page on the watch. This page let's user accept/decline the call. |
@@ -442,7 +443,7 @@ You should see something like:
 > Use `pwd` to see where you are.  
 
 
-<br><br>
+<br>
 
 
 
@@ -455,11 +456,13 @@ You should see something like:
 > **You can use the provided `scripts/play-esp.sh` helper script to stream audioo to the device speaker.**
 <br>
 
-<br><br>
+<br>
 
  
 ## **Voice Assistant**
 
+Wake word detection is disabled by default to save battery.  
+Hold the `BOOT` button to send voice commands, release it when done talking.   
 
 ### **Architecture**
 
@@ -490,7 +493,7 @@ Instead the flow looks like:
 
 **Result:** Designed for speeed and safety. All heavy lifting is done at build-time.   
 
-<br><br>
+<br>
 
 
 ### **My Voice Commands**
@@ -680,7 +683,7 @@ Strap width: 22.00 mm
 </details>
 
 
-<br><br>
+<br>
 
 ### **Peripherals**
 
@@ -690,7 +693,7 @@ I2S is used as single peripheral.
 **I2S TX** is configured as Master, while **I2S RX** is set to slave mode.  
 Audio codecs (ES7210/ES8311) are configured via I2C, and are used as slaves.   
 
-<br><br>
+<br>
 
 #### **I2C**
 
@@ -711,7 +714,7 @@ Audio codecs (ES7210/ES8311) are configured via I2C, and are used as slaves.
 0x51 === PCF85063A (RTC)  
 0x6B	 === QMI8658 (6-axis IMU)   
 
-<br><br>
+<br>
 
 ## **Graphical User Interface**
 
@@ -720,7 +723,7 @@ Pressing the boot button will display the application launcher which let's the u
 A upwards swipe gesture will close the open application and display the digital clock again.  
 
 
-<br><br>
+<br>
 
 
 ## **Applications**  
@@ -731,7 +734,7 @@ A upwards swipe gesture will close the open application and display the digital 
   
 Will extend with more applications as I think of any useful ones.  
 
-<br><br>
+<br>
 
 
 ## **Power Management & Optimizations**  
@@ -743,7 +746,7 @@ Holding the  power button again will wake it up again.
 
 As battery is not really optimized yet, it drains pretty quickly but it recharges very fast too (rougly 10-15 minutes).  
 
-<br><br>
+<br>
 
 
 ## **Sponsor**

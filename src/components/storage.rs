@@ -12,6 +12,18 @@ use alloc::vec::Vec;
 
 // ───────────────────────────────────────────────────────────────────────
 // TYPES & GLOBAL STATE
+pub enum StorageCommand {
+    Enable,
+    Disable,
+}
+
+pub static STORAGE_CMD: embassy_sync::channel::Channel<
+    embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
+    StorageCommand,
+    1,
+> = embassy_sync::channel::Channel::new();
+
+
 pub enum SdState {
     NotInserted,
     Mounted,
@@ -48,19 +60,53 @@ type FileType<'a> = embedded_sdmmc::File<'a, SdCardType, DummyTime, 12, 12, 1>;
 
 static VOL_MGR: critical_section::Mutex<core::cell::RefCell<Option<VolumeMgrType>>> = critical_section::Mutex::new(core::cell::RefCell::new(None));
 
+#[embassy_executor::task]
+pub async fn storage_init_task(mut card: SdCardType) {
+    let mut enabled = false;
+    let mut card_opt = Some(card);
+
+    loop {
+        let cmd = STORAGE_CMD.receive().await;
+        match cmd {
+            StorageCommand::Enable => {
+                if enabled {
+                    continue;
+                }
+                let card = match card_opt.take() {
+                    Some(c) => c,
+                    None => {
+                        defmt::error!("Storage: card already consumed");
+                        continue;
+                    }
+                };
+                defmt::info!("Storage: enabling and initialising SD card...");
+                let vol_mgr = embedded_sdmmc::VolumeManager::new(card, DummyTime);
+                critical_section::with(|cs| {
+                    *VOL_MGR.borrow(cs).borrow_mut() = Some(vol_mgr);
+                });
+                enabled = true;
+                crate::store!(crate::state::SD_READY, true);
+                defmt::info!("Storage: ready");
+            }
+            StorageCommand::Disable => {
+                // TODO: toggling
+                defmt::warn!("Disable ignored – storage can only be enabled once");
+            }
+        }
+    }
+}
+
 
 // ───────────────────────────────────────────────────────────────────────
 // INITIATE SD CARD DRIVER (CALL FROM MAIN)
-pub fn init(card: SdCardType) {
-    let vol_mgr = embedded_sdmmc::VolumeManager::new(card, DummyTime);
-    critical_section::with(|cs| {
-        *VOL_MGR.borrow(cs).borrow_mut() = Some(vol_mgr);
-    });
+pub fn init(card: SdCardType, spawner: &embassy_executor::Spawner) {
+    crate::spawn!(spawner, storage_init_task(card));
 }
 
 // ───────────────────────────────────────────────────────────────────────
 // FUZZY SEARCH SONGS 
 pub fn search_song(query: &str) -> Option<(String, u8)> {
+    ensure_sd_ready().ok()?; // RETURNS `None` IF INIT FAILED
     defmt::info!("🪄 fuzzy searching: {}", query);
 
     critical_section::with(|cs| {
@@ -128,6 +174,9 @@ pub fn search_song(query: &str) -> Option<(String, u8)> {
 
 
 pub fn search_top_n(query: &str, n: usize) -> Vec<(String, u8)> {
+    if ensure_sd_ready().is_err() {
+        return Vec::new();
+    }
     // GRAB ALL FILENAMES FROM `/Music` (inside crit section)
     let filenames: Vec<String> = critical_section::with(|cs| {
         let mut guard = VOL_MGR.borrow(cs).borrow_mut();
@@ -218,6 +267,7 @@ pub fn generate_playlist(query: &str) -> Result<String, SdError> {
 // ───────────────────────────────────────────────────────────────────────
 // GET THE SIZE OF A FILE (BYTES) BY FULL PATH
 pub fn file_size(path: &str) -> Result<u32, SdError> {
+    ensure_sd_ready()?;
     defmt::debug!("file_size: path='{}'", path);
 
     critical_section::with(|cs| {
@@ -316,6 +366,7 @@ pub fn file_size(path: &str) -> Result<u32, SdError> {
 }
 
 pub fn read_file(path: &str, buffer: &mut [u8]) -> Result<usize, SdError> {
+    ensure_sd_ready()?;
     critical_section::with(|cs| {
         let mut guard = VOL_MGR.borrow(cs).borrow_mut();
         let vol_mgr = guard.as_mut().ok_or(SdError::NotInitialized)?;
@@ -385,6 +436,7 @@ impl Drop for SdFileStream {
 // OPENS A FILE FOR STREAMING READS
 // TO AVOID HAVING TO LOAD ENTIRE FILE INTO MEMORY
 pub fn open_file_stream(path: &str) -> Result<SdFileStream, SdError> {
+    ensure_sd_ready()?;
     critical_section::with(|cs| {
         let mut guard = VOL_MGR.borrow(cs).borrow_mut();
         let vol_mgr = guard.as_mut().ok_or(SdError::NotInitialized)?;
@@ -546,6 +598,7 @@ pub fn read_file_to_vec(path: &str) -> Result<Vec<u8>, SdError> {
 // OPEN A FILE FOR WRITING. THE FILE IS CREATED IF IT DOES NOT EXIST,
 // DIR MUST EXIST!
 pub fn create_file_for_writing(path: &str) -> Result<SdFileWriter, SdError> {
+    ensure_sd_ready()?;
     defmt::info!("create_file_for_writing: '{}'", path);
 
     critical_section::with(|cs| {
@@ -628,6 +681,7 @@ pub fn create_file_for_writing(path: &str) -> Result<SdFileWriter, SdError> {
 
 // LIST ALL ENTRIES IN DIR
 pub fn list_dir(path: &str) -> Result<Vec<(String, bool, u32)>, SdError> {
+    ensure_sd_ready()?;
     critical_section::with(|cs| {
         let mut guard = VOL_MGR.borrow(cs).borrow_mut();
         let vol_mgr = guard.as_mut().ok_or(SdError::NotInitialized)?;
@@ -674,6 +728,7 @@ pub fn list_dir(path: &str) -> Result<Vec<(String, bool, u32)>, SdError> {
 
 // DELETE A FILE BY FULL PATH
 pub fn delete_file(path: &str) -> Result<(), SdError> {
+    ensure_sd_ready()?;
     critical_section::with(|cs| {
         let mut guard = VOL_MGR.borrow(cs).borrow_mut();
         let vol_mgr = guard.as_mut().ok_or(SdError::NotInitialized)?;
@@ -703,3 +758,13 @@ pub fn delete_file(path: &str) -> Result<(), SdError> {
     })
 }
 
+// BLOCK THE CURRENT THREAD UNTIL THE SD CARD IS MOUNTED
+fn ensure_sd_ready() -> Result<(), SdError> {
+    if crate::load!(crate::state::SD_READY) {
+        Ok(())
+    } else {
+        // FIRE ENABLE COMMAND
+        let _ = STORAGE_CMD.try_send(StorageCommand::Enable);
+        Err(SdError::NotInitialized)
+    }
+}
