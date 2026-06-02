@@ -78,6 +78,7 @@ Turn up volume & hit play.
 
 #### **Pictures**
 
+**Homescreens (swipe left/right)**   
 
 <a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/homescreen1.jpeg">
   <img src="resource/demo/homescreen1.jpeg" alt="Homescreen" width="148">
@@ -93,52 +94,77 @@ Turn up volume & hit play.
 
 <a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/charging.jpeg">
   <img src="resource/demo/charging.jpeg" alt="Charging" width="148">
-</a> <br>
-
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/launcher.jpeg">
-  <img src="resource/demo/launcher.jpeg" alt="Launcher" width="148">
-</a>
-
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/qwackify.jpeg">
-  <img src="resource/demo/qwackify.jpeg" alt="Media Player -Qwackify" width="148">
-</a>
-
-
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/calling.jpeg">
-  <img src="resource/demo/calling.jpeg" alt="Dad is calling" width="148">
-</a>
-
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings_info_3.jpeg">
-  <img src="resource/demo/settings_info_3.jpeg" alt="Settings Info 3" width="148">
-</a>
-
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings_info_2.jpeg">
-  <img src="resource/demo/settings_info_2.jpeg" alt="Settings Info 2" width="148">
-</a> <br>
-
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings_info_1.jpeg">
-  <img src="resource/demo/settings_info_1.jpeg" alt="Settings Info 1" width="148">
-</a>
-
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings_info_0.jpeg">
-  <img src="resource/demo/settings_info_0.jpeg" alt="Settings Info 0" width="148">
-</a> <br>
-
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings11.jpeg">
-  <img src="resource/demo/settings11.jpeg" alt="Settings 11" width="148">
-</a>
-
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/IMG_2918.jpeg">
-  <img src="resource/demo/IMG_2918.jpeg" alt="IMG 2918" width="148">
-</a> <br>
-
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/IMG_2916.jpeg">
-  <img src="resource/demo/IMG_2916.jpeg" alt="IMG 2916" width="148">
 </a>
 
 <a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/tinyweather.jpeg">
   <img src="resource/demo/tinyweather.jpeg" alt="Tiny Weather" width="148">
 </a> <br>
+
+**Launcher - accessed far left at homescreen (in launcher swipe up/down)**  
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/launcher.jpeg">
+  <img src="resource/demo/launcher.jpeg" alt="Launcher" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/launcher1.jpeg">
+  <img src="resource/demo/launcher1.jpeg" alt="Launcher 1" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/launcher2.jpeg">
+  <img src="resource/demo/launcher2.jpeg" alt="Launcher 2" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/launcher3.jpeg">
+  <img src="resource/demo/launcher3.jpeg" alt="Launcher 3" width="148">
+</a> 
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/launcher4.jpeg">
+  <img src="resource/demo/launcher4.jpeg" alt="Launcher 4" width="148">
+</a> <br>
+
+**Apps/Misc**  
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/media_player.jpeg">
+  <img src="resource/demo/media_player.jpeg" alt="Media Player" width="148">
+</a> 
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/qwackify.jpeg">
+  <img src="resource/demo/qwackify.jpeg" alt="Media Player -Qwackify" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/calling.jpeg">
+  <img src="resource/demo/calling.jpeg" alt="Dad is calling" width="148">
+</a> <br>
+
+**Settings (swipe left/right between settings, up/down to control)**  
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings0.jpeg">
+  <img src="resource/demo/settings0.jpeg" alt="Settings 0" width="148">
+</a> 
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings1.jpeg">
+  <img src="resource/demo/settings1.jpeg" alt="Settings 1" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings2.jpeg">
+  <img src="resource/demo/settings2.jpeg" alt="Settings 2" width="148">
+</a> <br>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings3.jpeg">
+  <img src="resource/demo/settings3.jpeg" alt="Settings 3" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/setteings4.jpeg">
+  <img src="resource/demo/setteings4.jpeg" alt="Settings 4" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings5.jpeg">
+  <img src="resource/demo/settings5.jpeg" alt="Settings 5" width="148">
+</a> <br>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings6.jpeg">
+  <img src="resource/demo/settings6.jpeg" alt="Settings 6" width="148">
+</a>
 
 <a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settomgs7.jpeg">
   <img src="resource/demo/settomgs7.jpeg" alt="Settings 7" width="148">
@@ -148,52 +174,36 @@ Turn up volume & hit play.
   <img src="resource/demo/settings8.jpeg" alt="Settings 8" width="148">
 </a> <br>
 
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings6.jpeg">
-  <img src="resource/demo/settings6.jpeg" alt="Settings 6" width="148">
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/IMG_2916.jpeg">
+  <img src="resource/demo/IMG_2916.jpeg" alt="IMG 2916" width="148">
 </a>
 
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings5.jpeg">
-  <img src="resource/demo/settings5.jpeg" alt="Settings 5" width="148">
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/IMG_2918.jpeg">
+  <img src="resource/demo/IMG_2918.jpeg" alt="IMG 2918" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings11.jpeg">
+  <img src="resource/demo/settings11.jpeg" alt="Settings 11" width="148">
 </a> <br>
 
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings3.jpeg">
-  <img src="resource/demo/settings3.jpeg" alt="Settings 3" width="148">
+
+**Settings (info pages (swipe up/down)**
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings_info_0.jpeg">
+  <img src="resource/demo/settings_info_0.jpeg" alt="Settings Info 0" width="148">
 </a>
 
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings2.jpeg">
-  <img src="resource/demo/settings2.jpeg" alt="Settings 2" width="148">
-</a> <br>
-
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings1.jpeg">
-  <img src="resource/demo/settings1.jpeg" alt="Settings 1" width="148">
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings_info_1.jpeg">
+  <img src="resource/demo/settings_info_1.jpeg" alt="Settings Info 1" width="148">
 </a>
 
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings0.jpeg">
-  <img src="resource/demo/settings0.jpeg" alt="Settings 0" width="148">
-</a> <br>
 
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/setteings4.jpeg">
-  <img src="resource/demo/setteings4.jpeg" alt="Settings 4" width="148">
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings_info_2.jpeg">
+  <img src="resource/demo/settings_info_2.jpeg" alt="Settings Info 2" width="148">
 </a>
 
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/media_player.jpeg">
-  <img src="resource/demo/media_player.jpeg" alt="Media Player" width="148">
-</a> <br>
-
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/launcher4.jpeg">
-  <img src="resource/demo/launcher4.jpeg" alt="Launcher 4" width="148">
-</a>
-
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/launcher3.jpeg">
-  <img src="resource/demo/launcher3.jpeg" alt="Launcher 3" width="148">
-</a> <br>
-
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/launcher2.jpeg">
-  <img src="resource/demo/launcher2.jpeg" alt="Launcher 2" width="148">
-</a>
-
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/launcher1.jpeg">
-  <img src="resource/demo/launcher1.jpeg" alt="Launcher 1" width="148">
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings_info_3.jpeg">
+  <img src="resource/demo/settings_info_3.jpeg" alt="Settings Info 3" width="148">
 </a> <br>
 
 
