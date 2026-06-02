@@ -1,0 +1,9 @@
+[package]
+name = "buzzkiller"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+microfft = { version = "0.3.1", default-features = false, features = ["maxn-512"] }
+libm = "0.2"

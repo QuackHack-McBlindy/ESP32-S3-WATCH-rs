@@ -26,6 +26,22 @@ macro_rules! is_dirty {
     };
 }
 
+#[macro_export]
+macro_rules! dirty_loop_on {
+    () => {
+        crate::state::DISPLAY_LOOP_DIRTY.store(true, core::sync::atomic::Ordering::Relaxed);
+        defmt::info!("DIRTY LOOPING!");
+    };
+}
+
+#[macro_export]
+macro_rules! dirty_loop_off {
+    () => {
+        defmt::info!("NOO MORE DIRTY LOOPIN'");
+        crate::state::DISPLAY_LOOP_DIRTY.store(false, core::sync::atomic::Ordering::Relaxed);
+    };
+}
+
 
 // ───────────────────────────────────────────────────────────────────────
 // DELAY RELATED
@@ -96,6 +112,19 @@ macro_rules! toggle {
         new
     }};
 }
+
+// SWAP!
+// AUTOMATICALLY TOGGLE AN AtomicBool
+// RETURNS THE VALUE **BEFORE** THE SWAP.
+// USAGE:
+//   let was_on = swap!(POWER_STATE);
+#[macro_export]
+macro_rules! swap {
+    ($var:expr) => {{
+        $var.fetch_xor(true, ::core::sync::atomic::Ordering::Relaxed)
+    }};
+}
+
 
 // INIT_u8
 // USAGE:

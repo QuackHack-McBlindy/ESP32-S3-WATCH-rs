@@ -11,3 +11,4 @@ img = img.quantize(colors=256)
 
 # save
 img.save("converted.png")
+print("Done.")

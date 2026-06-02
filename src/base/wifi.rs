@@ -20,6 +20,32 @@ pub static WIFI_CMD: embassy_sync::channel::Channel<
 > = embassy_sync::channel::Channel::new();
 // ───────────────────────────────────────────────────────────────────────
 
+/// TOGGLE WI‑FI ON/OFF
+pub async fn toggle_wifi() {
+    let current = crate::load!(crate::state::WIFI_STATE);
+    if current { // TURN IT OFF
+        crate::base::wifi::WIFI_CMD.send(crate::base::wifi::WifiCommand::Disable).await;
+        crate::store!(crate::state::WIFI_STATE, false);
+        defmt::info!("Wi‑Fi disabled");
+    } else { // TURN IT ON
+        crate::base::wifi::WIFI_CMD.send(crate::base::wifi::WifiCommand::Enable).await;
+        crate::store!(crate::state::WIFI_STATE, true);
+        defmt::info!("Wi‑Fi enabled");
+    }
+}
+
+pub fn toggle_wifi_now() {
+    let current = crate::load!(crate::state::WIFI_STATE);
+    if current {
+        let _ = WIFI_CMD.try_send(WifiCommand::Disable);
+        crate::store!(crate::state::WIFI_STATE, false);
+        defmt::info!("Wi‑Fi disabled (non‑async)");
+    } else {
+        let _ = WIFI_CMD.try_send(WifiCommand::Enable);
+        crate::store!(crate::state::WIFI_STATE, true);
+        defmt::info!("Wi‑Fi enabled (non‑async)");
+    }
+}
 
 // WIFI CONNECTION TASK
 #[embassy_executor::task]
@@ -28,8 +54,9 @@ pub async fn connection(mut controller: esp_radio::wifi::WifiController<'static>
     let mut idx = 0;
     let mut fail_count = 0u8;
 
-    // START ENABLED
-    let mut enabled = true;
+    // CHECK DEFAULT WIFI BOOT STATE
+    let mut enabled = crate::load!(crate::state::WIFI_STATE);
+    if !enabled { defmt::info!("🛜 💤"); }
 
     'outer: loop {
         // WAIT UNTIL ENABLED
@@ -37,6 +64,7 @@ pub async fn connection(mut controller: esp_radio::wifi::WifiController<'static>
             let cmd = WIFI_CMD.receive().await;
             if matches!(cmd, WifiCommand::Enable) {
                 enabled = true;
+                crate::store!(crate::state::WIFI_STATE, true);
                 break;
             }
         }
@@ -61,12 +89,15 @@ pub async fn connection(mut controller: esp_radio::wifi::WifiController<'static>
             // CONNECTION SUCCEEDED
             embassy_futures::select::Either::First(Ok(conn_info)) => {
                 defmt::info!(
-                    "WiFi - ✅ CONNECTED ({}), CHANNEL: {}",
+                    "🛜 ☑️ - ({}), CHANNEL: {}",
                     ssid,
                     conn_info.channel
                 );
                 fail_count = 0; // RESET FAILURE COUNTER ON SUCESS
+                
+                // STORE WIFI STATE
                 crate::store!(crate::state::WIFI_CONNECTED, true);
+                *crate::state::CONNECTED_SSID.lock().await = Some(ssid);
 
                 // SUCCESS! MONITOR RSSI & WAIT FOR DISCONNECT OR Disable
                 loop {
@@ -86,16 +117,17 @@ pub async fn connection(mut controller: esp_radio::wifi::WifiController<'static>
                     )
                     .await
                     {
-                        // DISCONNECTED (NATIVE EVENT)
+                        // DISCONNECTED
                         embassy_futures::select::Either::First(result) => {
                             match result {
                                 Ok(info) => defmt::info!(
-                                    "WiFi - ❌ DISCONNECTED! REASON: {:?}",
+                                    "🛜 ❌ - DISCONNECTED! REASON: {:?}",
                                     info.reason
                                 ),
                                 Err(e) => defmt::info!("WiFi - ❌ DISCONNECT ERROR: {:?}", e),
                             }
                             crate::store!(crate::state::WIFI_CONNECTED, false);
+                            *crate::state::CONNECTED_SSID.lock().await = None;
                             break; // LEAVE INNER LOOP → RECONNECT AGAIN ON SAME CREDS
                         }
                         // TIMEOUT OR COMMAND
@@ -108,7 +140,9 @@ pub async fn connection(mut controller: esp_radio::wifi::WifiController<'static>
                                     // TURNED OFF WIFI – DISCONNECT & GO BACK TO DISABLED WAIT
                                     let _ = controller.disconnect_async().await;
                                     crate::store!(crate::state::WIFI_CONNECTED, false);
+                                    *crate::state::CONNECTED_SSID.lock().await = None;
                                     enabled = false;
+                                    crate::store!(crate::state::WIFI_STATE, false);
                                     continue 'outer;
                                 }
                             }
@@ -120,10 +154,10 @@ pub async fn connection(mut controller: esp_radio::wifi::WifiController<'static>
 
             // CONNECTION FAILED (CONTROLLER ERROR)
             embassy_futures::select::Either::First(Err(e)) => {
-                defmt::info!("WiFi - ❌ CONNECTION FAILED for {}: {:?}", ssid, e);
+                defmt::info!("🛜 ❌ - CONNECTION FAILED for {}: {:?}", ssid, e);
                 fail_count += 1;
 
-                if fail_count >= 2 {
+                if fail_count >= 3 {
                     defmt::info!(
                         "WiFi - Switching to next credentials ({} failures)",
                         fail_count
@@ -138,6 +172,8 @@ pub async fn connection(mut controller: esp_radio::wifi::WifiController<'static>
 
             // RECEIVED DISABLE WHILE CONNECTING – GO BACK TO DISABLED STATE
             embassy_futures::select::Either::Second(_) => {
+                *crate::state::CONNECTED_SSID.lock().await = None;
+                crate::store!(crate::state::WIFI_STATE, false);
                 enabled = false;
             }
         }
@@ -164,7 +200,7 @@ pub async fn init(
         wifi_peripheral,
         esp_radio::wifi::ControllerConfig::default(),
     )
-    .expect("Wi‑Fi - ❌ INIT FAILED");
+    .expect("🛜 ❌ - INIT FAILED");
 
     let station = interfaces.station;
 
@@ -213,10 +249,15 @@ pub async fn network_ready_task(
     stack.wait_config_up().await;
 
     // GRAB IPV4 AND STORE IT
-    if let Some(config) = stack.config_v4() {
-        let ip_raw = u32::from(config.address.address());
-        crate::store!(crate::state::CURRENT_IP, ip_raw);
-        defmt::info!("IP: {}", config.address);
+    embassy_time::Timer::after_millis(100).await;
+    for _ in 0..10 {
+        if let Some(config) = stack.config_v4() {
+            let ip_raw = u32::from(config.address.address());
+            crate::store!(crate::state::CURRENT_IP, ip_raw);
+            defmt::info!("IP: {}", config.address);
+            break;
+        }
+        embassy_time::Timer::after_millis(100).await;
     }
 
     // RESOLVE BACKEND ADDRESS
@@ -235,7 +276,7 @@ pub async fn network_ready_task(
 
     // SYNC RTC VIA NTP
     match crate::components::pcf85063a::ntp_sync(stack).await {
-        Ok(()) => defmt::info!("PCF85063AA Synchronized"),
+        Ok(()) => defmt::info!("PCF85063A Synchronized"),
         Err(e) => defmt::warn!("NTP sync failed: {}", e),
     }
 

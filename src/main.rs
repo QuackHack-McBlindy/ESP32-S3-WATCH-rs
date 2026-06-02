@@ -1,10 +1,12 @@
+// ★ ─────────────────────────────────────────────────────────────────────── ★
 //! ESP32-S3-WATCH-rs ⮞ https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs
-//!  BARE METAL RUST  - HARDWARE ABSTRACTION LAYER `esp-hal`
-//!   SMARTWATCH OS   - BY QuackHack-McBlindy 🦆🧑‍🦯
-// ───────────────────────────────────────────────────────────────────────
+//!  BARE METAL RUST  - HARDWARE ABSTRACTION LAYER: `esp-hal`
+//!   SMARTWATCH OS   - BY QuackHack-McBLindy 🦆🧑‍🦯
+// ★ ─────────────────────────────────────────────────────────────────────── ★
 //! “A powerful voice assistant can make a huge difference for blind people.”
-//! “Imagine yourself stumbling blindly across the room looking for the remote — meanwhile, I call it using only my voice.”
-// ───────────────────────────────────────────────────────────────────────
+//! “Imagine yourself stumbling blindly across the room looking for the TV remote — meanwhile, I call the remote using only my voice.”
+//! “Just to find it and throw it out the window -- because I won't ever need it.“
+// ★ ─────────────────────────────────────────────────────────────────────── ★
 
 #![no_std]
 #![no_main]
@@ -12,17 +14,18 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 #![allow(unused)]
+#![allow(private_interfaces)]
 #![deny(clippy::mem_forget)]
 #![deny(clippy::large_stack_frames)]
 
-// IMPORTS
+// IMPORT
 use esp_println as _;
 
-// PANIC HANDLER (defmt)
+// PANIC HANDLER
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     defmt::error!("⚠️ Panic: {}", defmt::Debug2Format(info));
-    loop {}
+    loop {} // REBOOT THE DEVICE! (HOLD POWER BUTTON)
 }
 
 // MEMORY
@@ -42,6 +45,12 @@ mod applications;
 // TYPE ALIASES
 pub type I2cBus = esp_hal::i2c::master::I2c<'static, esp_hal::Blocking>;
 
+#[derive(defmt::Format)]
+pub enum DisplayCommand {
+    Start,
+    Stop,
+}
+
 // SHARED RESOURCES
 pub static TOUCH_CHANNEL: embassy_sync::channel::Channel<embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex, crate::components::ft3168::SwipeDirection, 5> = embassy_sync::channel::Channel::new();
 pub static ES7210: critical_section::Mutex<core::cell::RefCell<Option<es7210::Es7210>>> =
@@ -50,13 +59,16 @@ pub static ES8311: critical_section::Mutex<core::cell::RefCell<Option<es8311::Es
     critical_section::Mutex::new(core::cell::RefCell::new(None));
 pub static I2C_BUS: critical_section::Mutex<core::cell::RefCell<Option<I2cBus>>> = 
     critical_section::Mutex::new(core::cell::RefCell::new(None));
+pub static AMP_PIN: critical_section::Mutex<core::cell::RefCell<core::option::Option<esp_hal::gpio::Output<'static>>>> = 
+    critical_section::Mutex::new(core::cell::RefCell::new(core::option::Option::None));
+pub static DISPLAY_CMD: embassy_sync::channel::Channel<embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex, DisplayCommand, 1> = embassy_sync::channel::Channel::new();
 
 
 // ───────────────────────────────────────────────────────────────────────
 // CONSTRUCT THE VOICE HANDLER
 struct VoiceHandler;
 
-// CONFIGURE VOICE EVENTS
+// CONFIGURE VOICE EVENTS (WAKE-WORD DETECTION)
 // BACKEND RESPONDS WITH SINGLE-BYTE EVENT CODES
 // FOR A LOW-OVERHEAD EMBEDDED NETWORK PROTOCOL
 impl yo_esp::CommandHandler for VoiceHandler {
@@ -100,109 +112,231 @@ impl yo_esp::CommandHandler for VoiceHandler {
 
 
 // ───────────────────────────────────────────────────────────────────────
-// DISPLAY CONTROLLER TASK
+// DISPLAY CONTROLLER TASK – BOOTS DISABLED
+// ───────────────────────────────────────────────────────────────────────
+// DISPLAY CONTROLLER TASK – BOOTS DISABLED
 #[embassy_executor::task]
 async fn display_task(
     mut fb: crate::components::framebuffer::Framebuffer,
     mut display: crate::components::co5300::Co5300Display<'static>,
-) {
-    // INIT - SET DEFAULT DISPLAY BRIGHTNESS
-    display.set_brightness(0xB3); // 70%
-    // START WITH THE SCREEN OFF
+    te: esp_hal::gpio::Input<'static>,
+) { // START WITH THE SCREEN OFF
     // WAKE IT UP BY SAYING: (OR TOUCHING SCREEN)
     // `YO BITCH!` (IF WAKE WORD ENABLED)
     display.display_off();
 
-    // STATE VARIABLES 
-    let mut screen_on = false;
-    // DEFAULT BRIGHTNESS 35%
-    let mut current_brightness = crate::load!(crate::state::DISPLAY_BRIGHTNESS);
-    let mut flash_toggle = false;
-    let mut last_page = crate::load!(crate::gui::pages::CURRENT_PAGE);
-
     loop {
-        // PROCESS ONE-SHOT COMMANDS FROM THE VOICE HANDLER
-        if crate::components::co5300::consume_wake() {
-            if !screen_on {
-                display.display_on();
-                screen_on = true;
+        // IDLE – SCREEN OFF, WAITING FOR START COMMAND
+        display.display_off();
+        crate::store!(crate::state::DISPLAY_STATE, false);
+
+        let cmd = crate::DISPLAY_CMD.receive().await;
+        match cmd {
+            DisplayCommand::Start => { /* PROCEED */ },
+            DisplayCommand::Stop => { continue; },
+        }
+
+        // SCREEN ON – START RENDERING LOOP
+        display.display_on();
+        crate::store!(crate::state::DISPLAY_STATE, true);
+        defmt::info!("🖥️  ☑️");
+
+        // STATE VARIABLES 
+        // LOW DEFAULT BRIGHTNESS (35%) DON'T HURT 🦆 BLIND EYES & SAVES BATTERY 
+        let mut current_brightness = crate::load!(crate::state::DISPLAY_BRIGHTNESS);
+        let mut flash_toggle = false;
+        let mut last_page = crate::load!(crate::gui::pages::CURRENT_PAGE);
+
+        // READ TIMEOUT DURATION (CAN BE CHANGED AT RUNTIME)
+        let timeout_secs = crate::load!(crate::state::DISPLAY_TIMEOUT_SECS) as u64;
+        let render_duration = embassy_time::Duration::from_secs(timeout_secs);
+        let mut render_start = embassy_time::Instant::now();
+
+        loop {
+            // RESET THE IDLE TIMER IF THE SCREEN WAS TOUCHED
+            if crate::load!(crate::state::DISPLAY_TOUCH_ACTIVITY) {
+                crate::store!(crate::state::DISPLAY_TOUCH_ACTIVITY, false);
+                render_start = embassy_time::Instant::now();
             }
-            // FORCE REDRAW OF CURRENT PAGE IMMEDIATELY.
-            last_page = u8::MAX;
-        }
 
-        // CLICKING POWER BUTTON ALSO TURNS ON THE DISPLAY
-        if crate::load!(crate::state::DISPLAY_STATE) {
-            display.display_on();
-            screen_on = true;
-        } // CLICKING IT AGAIN TURNS IT BACK OFF
-        if !crate::load!(crate::state::DISPLAY_STATE) {
-            display.display_off();
-            screen_on = false;
-        }
+            // CHECK FOR STOP COMMAND
+            if let Ok(DisplayCommand::Stop) = crate::DISPLAY_CMD.try_receive() {
+                break;
+            }
 
-        // DISPLAY BRIGHTNESS CONTROL
-        let desired = crate::load!(crate::state::DISPLAY_BRIGHTNESS);
-        if desired != current_brightness {
-            let byte = (desired as u16 * 255 / 100) as u8;
-            display.set_brightness(byte);
-            current_brightness = desired;
-        }
-
-        if crate::components::co5300::consume_sleep() {
-            if screen_on {
+            // IF DISPLAY STATE TOGGLED OFF EXTERNALLY, TURN OFF AND GO IDLE
+            if !crate::load!(crate::state::DISPLAY_STATE) || crate::components::co5300::consume_sleep() {
                 display.display_off();
-                screen_on = false;
-                // AFTER SLEEP, WE WANT A FULL REDRAW ON NEXT WAKE
+                crate::store!(crate::state::DISPLAY_STATE, false);
+                last_page = u8::MAX;
+                break;
+            }
+
+            // PROCESS ONE-SHOT COMMANDS FROM YO VOICE HANDLER
+            if crate::components::co5300::consume_wake() {
+                // FORCE REDRAW OF CURRENT PAGE IMMEDIATELY
                 last_page = u8::MAX;
             }
-        }
 
-        // FLASH DISPLAY OR RENDER PAGE NORMALLY?
-        let flashing = crate::components::co5300::is_flashing();
-        if flashing {
-            flash_toggle = !flash_toggle;
-            if flash_toggle {
-                display.fill_screen(crate::gui::colors::YELLOW);
-            } else { display.fill_screen(crate::gui::colors::BLACK); }
-        } else { // NORMAL PAGE RENDERING ( ONLY WHEN SCREEN IS ON )
-            if screen_on {
-                let page = crate::load!(crate::gui::pages::CURRENT_PAGE);
-                let is_apps_page = page == 2; // APPS LAUNCHER
+            // CLICKING POWER BUTTON ALSO TURNS ON THE DISPLAY (BUT WE ARE ALREADY ON)
+            if crate::load!(crate::state::DISPLAY_STATE) {
+                display.display_on();
+                crate::store!(crate::state::DISPLAY_STATE, true);
+            } else {
+                display.display_off();
+                crate::store!(crate::state::DISPLAY_STATE, false);
+            }
 
-                if is_apps_page || page != last_page || crate::is_dirty!() {
-                    fb.clear_color(crate::gui::colors::BLACK);
+            // DISPLAY BRIGHTNESS CONTROL
+            let desired = crate::load!(crate::state::DISPLAY_BRIGHTNESS);
+            if desired != current_brightness {
+                let byte = (desired as u16 * 255 / 100) as u8;
+                display.set_brightness(byte);
+                current_brightness = desired;
+            }
 
-                    match page {
-                        0 => crate::gui::time::draw(&mut fb),
-                        1 => crate::gui::battery::draw(&mut fb),
-                        2 => crate::gui::apps::draw(&mut fb),
-                        10 => crate::gui::media_player::draw(&mut fb),
-                        11 => crate::gui::settings::draw(&mut fb),
-                        12 => crate::gui::media_player::draw(&mut fb),
-                        13 => crate::gui::house::draw(&mut fb),
-                        100 => crate::gui::call::draw(&mut fb),
-                        101 => crate::gui::text::draw(&mut fb),
-                        _ => {}
-                    } // DON'T FORGET TO FLUSH FRAMEBUFFER
-                    fb.flush(&mut display);
-                    last_page = page;
+            // FLASH DISPLAY OR RENDER PAGE NORMALLY?
+            let flashing = crate::components::co5300::is_flashing();
+            if flashing {
+                flash_toggle = !flash_toggle;
+                if flash_toggle {
+                    display.fill_screen(crate::gui::colors::YELLOW);
+                } else { display.fill_screen(crate::gui::colors::BLACK); }
+            } else {
+                // WE ONLY RENDER PAGES WHEN THE SCREEN IS ON
+                if crate::load!(crate::state::DISPLAY_STATE) {
+                    let page = crate::load!(crate::gui::pages::CURRENT_PAGE);
+                    let is_on_launcher = page == 0;
+
+                    // DIRTY CHECK: READ THEN CLEAR ONLY IF WE DRAW
+                    let dirty = crate::state::DISPLAY_DIRTY.swap(false, core::sync::atomic::Ordering::Acquire);
+
+                    if is_on_launcher || page != last_page || dirty {
+                        let mut need_flush = true;
+
+                        // APP LAUNCHER
+                        if is_on_launcher {
+                            // CALCULATE SCROLLING DISTANCE
+                            let offset = critical_section::with(|cs| {
+                                let mut launcher = crate::gui::apps::LAUNCHER.borrow_ref_mut(cs);
+                                let diff = launcher.target_scroll - launcher.scroll_offset;
+                                if diff.abs() > 2 {
+                                    launcher.scroll_offset += diff / 3;
+                                } else { launcher.scroll_offset = launcher.target_scroll; }
+                                launcher.scroll_offset
+                            });
+                            crate::gui::apps::compose(fb.buffer_mut(), offset);
+                            // VSYNC FLUSH FOR SMOOTH ANIMATION
+                            crate::gui::flush_vsync_async(&mut fb, &mut display, &te).await;
+                            need_flush = false;
+                        } else {
+                            // OTHER PAGES
+                            fb.clear_color(crate::gui::colors::BLACK);
+                            match page {
+                                0 => (),
+                                1 => crate::gui::time::draw(&mut fb),
+                                2 => crate::gui::battery::draw(&mut fb),
+                                3 => crate::gui::weather::draw(&mut fb),
+                                // APPLICATIONS
+                                10 => crate::gui::media_player::draw(&mut fb),
+                                11 => crate::gui::duck_tv::draw(&mut fb),
+                                12 => crate::gui::house::draw(&mut fb),
+                                13 => crate::gui::duckcloud::draw(&mut fb),
+                                14 => crate::gui::settings::draw(&mut fb),
+                                // SETTINGS APP
+                                140 => crate::gui::options::wifi::draw(&mut fb),
+                                141 => crate::gui::options::rssi::draw(&mut fb),
+                                142 => crate::gui::options::bluetooth::draw(&mut fb),
+                                143 => crate::gui::options::api::draw(&mut fb),
+                                144 => crate::gui::options::wakeword::draw(&mut fb),
+                                145 => crate::gui::options::streaming::draw(&mut fb),
+                                146 => crate::gui::options::speaker::draw(&mut fb),
+                                147 => crate::gui::options::mic::draw(&mut fb),
+                                148 => crate::gui::options::display::draw(&mut fb),
+                                149 => crate::gui::options::timeout::draw(&mut fb),
+                                150 => crate::gui::options::amplifier::draw(&mut fb),
+                                151 => crate::gui::options::info::draw(&mut fb),
+                                // MISC PAGES (CALLED BY API WHEN THEY'RE WANTED)
+                                100 => crate::gui::call::draw(&mut fb),
+                                101 => crate::gui::text::draw(&mut fb),
+                                _ => {}
+                            }
+                            if crate::gui::control_center::is_visible() {
+                                let current_offset = critical_section::with(|cs| {
+                                    crate::gui::control_center::OVERLAY.borrow_ref(cs).current_offset
+                                });
+                                crate::gui::control_center::draw_overlay(&mut fb, current_offset);
+                            } // DON'T FORGET TO FLUSH FRAMEBUFFER
+                        } // FLUSH ONLY IF UNFLUSHED
+                        if need_flush { fb.flush(&mut display); }
+                        last_page = page;
+                    }
                 }
             }
-        }
 
-        // SET APPROPRIATE DELAY (REFRESH RATE) FOR THE DISPLAY
-        // ( ANIMATIONS ARE NOT VERY PRETTY ON 2 FRAMES PER SECOND )
-        let delay_ms = if !screen_on {
-            400 // SCREEN OFF – LOW POWER (STILL NEED TO REFRESH TO KNOW WHEN TO TURN BACK ON AGAIN)
-        } else if crate::load!(crate::gui::pages::CURRENT_PAGE) == 2 {
-            33  // APP LAUNCHER – SMOOTH SCROLLING BETWEEN APPLICATIONS (~30 FPS)        
-        } else if crate::load!(crate::gui::pages::CURRENT_PAGE) == 10 {
-            50 // MEDIA PLAYER APP – SMOOTHER ANIMATION FOR THE PROGRESS BAR
-        } else {
-            200// OTHER PAGES (DEFAULT DELAY)
-        };
-        embassy_time::Timer::after(embassy_time::Duration::from_millis(delay_ms)).await;
+            // CONTROL CENTER SLIDE IN/OUT ANIMATION
+            let overlay_animating = critical_section::with(|cs| {
+                let ol = crate::gui::control_center::OVERLAY.borrow_ref(cs);
+                ol.current_offset != ol.target_offset
+            });
+            if overlay_animating {
+                crate::gui::control_center::animate(60);
+                last_page = u8::MAX;
+            }
+            
+            // MEDIA PLAYER SPLIT ANIMATION
+            let split_animating = critical_section::with(|cs| {
+                let split = crate::gui::media_player::MEDIA_SPLIT.borrow_ref(cs);
+                split.current_offset != split.target_offset
+            });
+            let is_media_page = crate::load!(crate::gui::pages::CURRENT_PAGE) == 10;
+
+            if split_animating || is_media_page {
+                crate::gui::media_player::animate_split(60);
+                if split_animating {
+                    last_page = u8::MAX;
+                }
+            }
+
+            // INFO PAGE (SETTINGS) SCROLL ANIMATION
+            if crate::load!(crate::gui::pages::CURRENT_PAGE) == 149 {
+                crate::gui::options::info::animate_info(60);
+                if critical_section::with(|cs| {
+                    let scroll = crate::gui::options::info::INFO_SCROLL.borrow_ref(cs);
+                    scroll.current_offset != scroll.target_offset
+                }) {
+                    last_page = u8::MAX;
+                }
+            }
+
+            let current_page = crate::load!(crate::gui::pages::CURRENT_PAGE);
+            // SET AN APPROPRIATE DELAY (REFRESH RATE) FOR THE DISPLAY
+            // DEPENDING ON WHAT PAGE WE'RE ON
+            let delay_ms = if overlay_animating || crate::gui::control_center::is_visible() || split_animating {
+                16   // SMOOTH OVERLAYS & SPLIT
+            } else if crate::load!(crate::gui::pages::CURRENT_PAGE) == 2 {
+                16   // APP LAUNCHER – FOR A SMOOTH SCROLLING BETWEEN APPS 16 SHOULD BE ENOUGH
+            } else if crate::load!(crate::gui::pages::CURRENT_PAGE) == 10 {
+                2000 // MEDIA PLAYER – SONG DURATION ONLY NEEDS TO BE UPDATED EVERY OTHER SECOND
+            } else if !crate::load!(crate::state::DISPLAY_STATE) {
+                1000 // WE CHECK EVERY SECOND IF DISPLAY SHOULD BE TURNED ON
+            } else { 400 }; // DEFAULT
+
+            // WAIT WITH INTERRUPTIBLE STOP CHECK (INSTEAD OF BLOCKING)
+            let stop_fut = crate::DISPLAY_CMD.receive();
+            let delay_fut = embassy_time::Timer::after(embassy_time::Duration::from_millis(delay_ms));
+            match embassy_futures::select::select(delay_fut, stop_fut).await {
+                embassy_futures::select::Either::Second(DisplayCommand::Stop) => break,
+                embassy_futures::select::Either::Second(DisplayCommand::Start) => { /* IGNORE */ }
+                _ => {}
+            }
+
+            // AUTO‑IDLE AFTER TIMEOUT
+            if render_start.elapsed() >= render_duration {
+                defmt::debug!("DISPLAY TIMEOUT – GOING IDLE");
+                break;
+            }
+        }
     }
 }
 
@@ -248,6 +382,26 @@ pub fn set_mic_gain(percent: u8) {
     });
 }
 
+// ───────────────────────────────────────────────────────────────────────
+// FUNCTIONS TO TURN ON/OFF THE AMPLIFIER
+pub fn amp_on() {
+    critical_section::with(|cs| {
+        if let core::option::Option::Some(pin) = AMP_PIN.borrow_ref_mut(cs).as_mut() {
+            pin.set_high();
+        }
+    }); defmt::info!("📢 ☑️");
+    crate::store!(crate::state::AMPLIFIER_STATE, true);
+}
+
+pub fn amp_off() {
+    critical_section::with(|cs| {
+        if let core::option::Option::Some(pin) = AMP_PIN.borrow_ref_mut(cs).as_mut() {
+            pin.set_low();
+        }
+    }); defmt::info!("📢 ❌");
+    crate::store!(crate::state::AMPLIFIER_STATE, false);
+}
+
 
 // ───────────────────────────────────────────────────────────────────────
 // MAIN
@@ -255,7 +409,6 @@ pub fn set_mic_gain(percent: u8) {
 #[esp_rtos::main]
 async fn main(spawner: embassy_executor::Spawner) -> ! {
     // WE CAN CONTROL CLOCKS AT RUNTIME LATER
-    // ALTHOUGH THE VOICE ASSISTANT NEED ALL 240MHz TO FUNCTION PROPERLY.
     let config = esp_hal::Config::default().with_cpu_clock(esp_hal::clock::CpuClock::max());
     let peripherals = esp_hal::init(config);
 
@@ -263,7 +416,12 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     esp_alloc::psram_allocator!(peripherals.PSRAM, esp_hal::psram);
     // HEAP ALLOC
     esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 73744);
-    
+
+    // TTF PARSING IS HEAVY? - LET'S CACHE THE FONT WE'LL USE. 
+    critical_section::with(|_| unsafe {
+        crate::gui::ROBOTO_BOLD_FONT =
+            Some(rusttype::Font::try_from_bytes(crate::base::assets::ROBOTO_BOLD).unwrap());
+    });
 
     // SOFTWARE INTERRUPT SETUP
     let _sw_ints = esp_hal::interrupt::software::SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
@@ -275,16 +433,21 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     let boot_time = embassy_time::Instant::now();
 
 
-    // BUTTONS (WE MONITOR THEM IN DEDICATED TASK DOWN BELOW)
+    // ───────────────────────────────────────────────────────────────────────
+    // BUTTONS (WE MONITOR THEM IN A DEDICATED TASK DOWN BELOW)
+
     // BOOT BUTTON (UPPER RIGHT SIDE BUTTON)
-    // WHEN PLAYING MEDIA - THIS INCREASES VOLUME
+    // HOLD DOWN TO SEND VOICE COMMANDS (WHEN WAKE-WORD DISABLED)
+    // WHEN PLAYING MEDIA - PUSH INCREASES VOLUME
     let button_boot = esp_hal::gpio::Input::new(
         peripherals.GPIO0,
         esp_hal::gpio::InputConfig::default().with_pull(esp_hal::gpio::Pull::Up)
     );
 
     // POWER BUTTON (LOWER RIGHT SIDE BUTTON)
-    // WHEN PLAYING MEDIA - THIS LOWERS VOLUME
+    // HELD DOWN FOR DEEP SLEEP/WAKE UP
+    // WHEN PLAYING MEDIA - PUSH LOWERS VOLUME
+    // TOGGLES DISPLAY ON/OFF OTHERWISE
     let button_power = esp_hal::gpio::Input::new(
         peripherals.GPIO10,
         esp_hal::gpio::InputConfig::default().with_pull(esp_hal::gpio::Pull::Up)
@@ -298,10 +461,26 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
         esp_hal::gpio::Level::Low,
         esp_hal::gpio::OutputConfig::default()
     );
+    
+    // LET'S MAKE THE AMP A SHARED RESOURCE
+    // SO THE PUBLIC FUNCTIONS CAN SET HIGH/LOW
+    critical_section::with(|cs| {
+        *AMP_PIN.borrow_ref_mut(cs) = core::option::Option::Some(amp);
+    });
+
+
+    // GPIO38 IS A TOUCH INTERUPT PIN - HIGH (PULL-UP) BY DEFAULT
+    // PULLED LOW BY THE TOUCH CONTROLLER UPON TOUCH
+    // WHEN A FINGER IS ON THE SCREEN WE USE IT AS AN WAKE-UP CALL
+    let mut touch_int = esp_hal::gpio::Input::new(
+        peripherals.GPIO38,
+        esp_hal::gpio::InputConfig::default().with_pull(esp_hal::gpio::Pull::Up)
+    ); 
 
 
     // ───────────────────────────────────────────────────────────────────────
     // MICRO SECURE DIGITAL CARD (STORAGE OVER SPI)
+    // CONFIGURATION
     let sd_spi_config = esp_hal::spi::master::Config::default()
         .with_frequency(esp_hal::time::Rate::from_mhz(4))
         .with_mode(esp_hal::spi::Mode::_0);
@@ -319,14 +498,15 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     let sd_spi_dev = embedded_hal_bus::spi::ExclusiveDevice::new_no_delay(sd_spi, sd_cs).unwrap();
     let sd_card = embedded_sdmmc::SdCard::new(sd_spi_dev, esp_hal::delay::Delay::new());
 
-    // MOVES OWNERSHIP INTO THE MODULE
+    // MOVE OWNERSHIP INTO THE STORAGE MODULE
     crate::components::storage::init(sd_card, &spawner);
-    // SD CARD NOW CONFIGURED - BUT NOT INITIATED (TO SAVE BATTERY)
+    // SD CARD NOW CONFIGURED - BUT NOT STARTED (POWER SAVER!)
+    // IT'S AUTO-INITIATED WHEN WE NEED IT!
     defmt::info!("STORAGE Successfully setup, awaiting initialization");
     
 
     // ───────────────────────────────────────────────────────────────────────
-    // I2C
+    // I2C BUS
     let i2c_a = esp_hal::i2c::master::I2c::new(
         peripherals.I2C0,
         esp_hal::i2c::master::Config::default().with_frequency(esp_hal::time::Rate::from_khz(400)),
@@ -345,7 +525,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     // (DRIVER STRUCT – DOES NOT HOLD BUS REF)
     let pmu = crate::components::axp2101::Axp2101::new();
     
-    // INITIALISE ALL I²C DEVICES (PMU, codecs, touch, battery readings etc)
+    // INITIALISE ALL I²C DEVICES (PMU, AUDIO CODECS, TOUCH, IMU, RTC)
     critical_section::with(|cs| {
         let mut bus_ref = I2C_BUS.borrow_ref_mut(cs);
         let i2c_bus = bus_ref.as_mut().expect("I2C bus missing");
@@ -359,10 +539,10 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
             defmt::error!("PMU init failed: {:?}", defmt::Debug2Format(&e));
         } else { defmt::info!("AXP2101 Successful initialization"); }
 
-
         // QMI8658 - IMU (ACCELEROMETER ++ GYROSCOPE) 
-        let mut imu = crate::components::qmi8658::Qmi8658Imu::new(&mut *i2c_bus);
-        let _ = imu.init();
+        // CURRENTLY NOT USED - WHY BOTHER INIT?
+        //let mut imu = crate::components::qmi8658::Qmi8658Imu::new(&mut *i2c_bus);
+        //let _ = imu.init();
     
         // ES7210 (ADC/MICROPHONES)
         let codec_cfg = es7210::CodecConfig {
@@ -423,32 +603,41 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
         let mut rtc = crate::components::pcf85063a::Pcf85063aRtc::new(i2c_bus);
         let _ = rtc.init();
     
-        // BATTERY READINGS
-        let _mv = pmu.get_battery_voltage(i2c_bus).unwrap_or(0);
-        let _is_charging = pmu.is_charging(i2c_bus).unwrap_or(false);    
-    
+        // PERFORM INITIAL BATTERY READINGS 
+        let mv = pmu.get_battery_voltage(i2c_bus).unwrap_or(0);
+        let percent = pmu.get_battery_percent(i2c_bus).unwrap_or(0);
+        let is_usb_connected = pmu.is_vbus_in(i2c_bus).unwrap_or(false);    
+        
+        // STPRE THE RESULTS
+        if percent == 100 {
+            crate::store!(crate::state::BATTERY_FULL, true);
+        } else { crate::store!(crate::state::BATTERY_FULL, false); }
+        if percent < 25 {
+            crate::store!(crate::state::BATTERY_NEED_CHARGING, true);
+        } else { crate::store!(crate::state::BATTERY_NEED_CHARGING, false); }
+        crate::store!(crate::state::BATTERY_VOLTAGE, mv as u32);
+        crate::store!(crate::state::BATTERY_PERCENT, percent);
+        crate::store!(crate::state::BATTERY_USB_CONNECTED, is_usb_connected);
+                    
         //  FT3168 - (TOUCH CONTROLLER)
         let mut touch_rst = esp_hal::gpio::Output::new(
             peripherals.GPIO9,
             esp_hal::gpio::Level::High,
             esp_hal::gpio::OutputConfig::default()
         );
-        // GPIO38 IS THE FT3168 INTERUPT LINE - HELD HIGH ON BY PULL-UP, PULLED LOW BY THE CONTROLLER
-        // WHEN A FINGER IS ON THE SCREEN WE USE IT BOTH FOR LEVEL CHECKS & AS AN ASYNC WAKE SOURCE
-        let mut _touch_int = esp_hal::gpio::Input::new(
-            peripherals.GPIO38,
-            esp_hal::gpio::InputConfig::default().with_pull(esp_hal::gpio::Pull::Up)
-        ); 
-        // TOUCH INIT SEQUENCE
+
+        // TOUCH RESET SEQUENCE
         touch_rst.set_low();
         delay.delay_millis(10);
         touch_rst.set_high();
         delay.delay_millis(50);
         let mut touch = crate::components::ft3168::Ft3168Touch::new(i2c_bus);
-        let _ = touch.init();
-        defmt::info!("FT3168  Successful initialization");
-   
-        // STORE THE DRIVER OBJECTS GLOBALLY FOR LATER USE
+        if let Err(e) = touch.init() {
+            defmt::error!("FT3168 init failed: {:?}", defmt::Debug2Format(&e));
+        } else { defmt::info!("FT3168  Successful initialization"); }
+
+
+        // STORE THE DRIVER OBJECTS GLOBALLY FOR LATER VOLUME CONTROL
         ES7210.borrow_ref_mut(cs).replace(es7210);
         ES8311.borrow_ref_mut(cs).replace(es8311);
 
@@ -461,7 +650,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
         .with_frequency(esp_hal::time::Rate::from_mhz(80))
         .with_mode(esp_hal::spi::Mode::_0);
 
-    // CREATE DISPLAY DMA BUFFER
+    // CREATE DISPLAY DMA BUFFERS
     let (rx_buf, rx_desc, tx_buf, tx_desc) = esp_hal::dma_buffers!(8000);
     let dma_rx = esp_hal::dma::DmaRxBuf::new(rx_desc, rx_buf).unwrap();
     let dma_tx = esp_hal::dma::DmaTxBuf::new(tx_desc, tx_buf).unwrap();
@@ -491,8 +680,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     display.init();
     
     // TEARING EFFECT OUTPUT ON CO5300
-    // COMMAND 0x35 === TEARON, PARAMETER 0x00 === VBlank ONLY
-    let _te_pin = esp_hal::gpio::Input::new(peripherals.GPIO13, esp_hal::gpio::InputConfig::default());
+    let te_pin = esp_hal::gpio::Input::new(peripherals.GPIO13, esp_hal::gpio::InputConfig::default());
     defmt::info!("CO5300  Successful initialization");
 
     // FRAMEBUFFER
@@ -500,20 +688,26 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     fb.clear_color(crate::gui::colors::BLACK);
     fb.flush(&mut display);
     
-
-
+    
     // ───────────────────────────────────────────────────────────────────────
-    // WIFI SETUP
+    // SETUP WIFI (ON LOW-POWER MODE)
     let backend_port: u16 = crate::state::BACKEND_TCP_PORT_STR.parse().expect("Invalid BACKEND_TCP_PORT");
     let stack = base::wifi::init(&spawner, peripherals.WIFI, backend_port).await;
     
+    // WIFI CONFIGURED TO SIT IDLE AND AWAIT START/STOP COMMANDS
+    // VOICE COMMUNICATION REQUIRES LOCAL NETWORK - START IT UP! (CAN BE TOGGLED AT RUNTIME)
+    crate::base::wifi::WIFI_CMD.send(crate::base::wifi::WifiCommand::Enable).await;
+    crate::store!(crate::state::WIFI_STATE, true);
     // LET IT CONNECT PROPERLY BEFORE CONTINUING
-    // WILL TRY TO CONNECT 3 TIMES BEFORE MOVING ON TO THE NEXT CONFIGURED SSID
-    crate::delay_s!(5);
+    // WILL TRY TO CONNECT 3 TIMES BEFORE MOVING ON TO THE NEXT CONFIGURED SSID (ENV VARS)
+    crate::delay_s!(8);
+    defmt::info!("IP: {:08x}", crate::load!(crate::state::CURRENT_IP));
 
     // SYNC REAL TIME CLOCK (RTC) TO NETWORK TIME PROTOCOL POOL (NTP)
+    // DONE ONCE - WE THEN +1 MINUTE EVERY 60 SECONDS
+    // THIS AVOIDS POLLING FROM I2C BUS TO TRACK TIME - SEEMS WAY MORE BATTERY EFFICIENT
     match crate::components::pcf85063a::ntp_sync(&stack).await {
-        Ok(()) => defmt::info!("PCF85063AA Successful synchronization"),
+        Ok(()) => defmt::info!("PCF85063A Successful synchronization"),
         Err(e) => defmt::warn!("NTP sync failed: {}", e),
     }
 
@@ -521,14 +715,13 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     // ───────────────────────────────────────────────────────────────────────
     // I2S AUDIO SETUP 
     // CREATE RX & TX DMA BUFFERS
-    let (_rx_buffer, rx_descriptors, tx_buffer, tx_descriptors) = esp_hal::dma_buffers!(crate::state::I2S_BUFFER_SIZE);
+    let (rx_buffer, rx_descriptors, tx_buffer, tx_descriptors) = esp_hal::dma_buffers!(crate::state::I2S_BUFFER_SIZE);
 
     // CONFIGURE THE I2S PERIPHERAL
-    // (I LIKE TO BE EXPLICIT)
+    // BY VARIABLES FOR A CODEC SYNCRONIZED AUDIO SETUP
     let i2s = esp_hal::i2s::master::I2s::new(
         peripherals.I2S0,
         peripherals.DMA_CH0,
-        // I2SCONFIG MATCHING AUDIO CODEC CONFIGURATION
         esp_hal::i2s::master::Config::new_tdm_philips()
             // SIGNAL LOOPBACK === SET I2S RX AS SLAVE
             // ++ ENABLES BIDRECTIONAL FULL-DUPLEX I2S ON SINGLE PERIPHERAL
@@ -542,6 +735,12 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     .into_async()
     .with_mclk(peripherals.GPIO16);
 
+    // AUDIO INPUT
+    // BUILD I2S RX (SLAVE) WITH DIGITAL-INPUT PIN ONLY
+    let i2s_rx = i2s.i2s_rx
+        .with_din(peripherals.GPIO42)
+        .build(rx_descriptors);
+
     // AUDIO OUTPUT
     // BUILD I2S TX (MASTER) WITH:
     // ++ BCLK ++ LRCLK ++ DIGITAL-OUTPUT PINS  
@@ -550,12 +749,6 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
         .with_ws(peripherals.GPIO45)
         .with_dout(peripherals.GPIO40)
         .build(tx_descriptors);
-
-    // AUDIO INPUT
-    // BUILD I2S RX (SLAVE) WITH DIGITAL-INPUT PIN ONLY
-    let i2s_rx = i2s.i2s_rx
-        .with_din(peripherals.GPIO42)
-        .build(rx_descriptors);
 
     // I2S TX CIRCULAR WRITE
     // CONTINUOUSLY WRITE TO I2S TX TO KEEP CLOCKS UP FOR RX (SLAVE)
@@ -568,10 +761,8 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
         }
     };
 
-
     // INIT YO HANDLER (OUR VOICE COMMAND HANDLER)
     let handler: alloc::boxed::Box<dyn yo_esp::CommandHandler> = alloc::boxed::Box::new(VoiceHandler);
-
 
     // ───────────────────────────────────────────────────────────────────────
     // INIT ENDPOINT ROUTES FOR THE INTERNAL API
@@ -579,111 +770,85 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
 
 
     // ───────────────────────────────────────────────────────────────────────
-    // FINISHED BOOTING PROCESS
-    // PRINT FIRMWARE INFORMATION
+    // BOOT PROCESS COMPLETE
+    // PRINT OS INFORMATION
     defmt::info!("╬═══════════════════════════════╬");
     defmt::info!("╬ STARTED {} v{} ╬",
         crate::state::PROJECT_NAME,
         crate::state::FW_VERSION
     ); defmt::info!("╬═══════════════════════════════╬");
 
-
     // ───────────────────────────────────────────────────────────────────────
     // TASKS
 
-    // SPEAKER TASK (WRITES AUDIO DATA INTO PIPE)
+    // SPEAKER TASK (WRITES AUDIO DATA INTO PIPE + KEEP CLOCKS FOR MIC)
+    // TASK STARTS IDLE AND WAITS FOR A COMMAND 
     crate::spawn!(spawner, yo_esp::speaker_task(tx_transfer));
+    // WE START IT - TO AVOID LATE DMA
+    yo_esp::SPEAKER_CMD.send(yo_esp::SpeakerCommand::Start).await;
+    crate::store!(crate::state::SPEAKER_TASK_STATE, true);
+    
     // NETWORK DEPENDENT TASKS
     if crate::load!(crate::state::WIFI_CONNECTED) {
-        // SPEAKER TASK (STREAM AUDIO TO SPEAKER OVER TCP PORT 12345)
+        // SPEAKER TASK (STREAM AUDIO TO THE SPEAKER OVER TCP PORT 12345)
+        // (SLEEPS UNLESS AUDIO IS RECIEVED)
         crate::spawn!(spawner, yo_esp::stream_speaker(stack, backend_port));
-        // MICROPHONE TASK (STREAM AUDIO TO SERVER OVER TCP PORT 12345)
+        // MICROPHONE TASK (STREAMS AUDIO TO BACKEND OVER TCP PORT 12345)
+        // (SLEEPS UNLESS WAKE-WORD ENABLED/BUTTON IS PRESSED)
         crate::spawn!(spawner, yo_esp::audio_capture_task(i2s_rx, stack, crate::state::BACKEND_TCP_HOST, backend_port, "esp", handler));
-        // HTTP WEB SERVER TASK (PORT 80)
-        crate::spawn!(spawner, tinyapi::web_server_task(stack));          
+        // HTTP API & WEB SERVER TASK (PORT 80)
+        // (IDLE - SEND START/STOP COMMAND)
+        crate::spawn!(spawner, tinyapi::web_server_task(stack));
+        // TO ENABLE VOICE DRIVEN OPERATIONS - WE START IT NOW!
+        tinyapi::SERVER_CMD.send(tinyapi::ServerCommand::Start).await;
+        crate::store!(crate::state::API_STATE, true);
     }
     // LISTEN FOR GUI MEDIA TOUCH EVENTS (PLAY/PAUSE/NEXT ETC)
+    // (NEVER WAKES CPU)
     crate::spawn!(spawner, crate::applications::media_player::media_command_task(spawner));
-    // BUTTON MONITOR TASK
+    // BUTTON MONITORING TASK
     crate::spawn!(spawner, crate::components::buttons::buttons_task(button_boot, button_power));
-    // TOUCH TASK
-    crate::spawn!(spawner, crate::gui::pages::touch_task());
+    // TOUCH TASK (SLEEPS WHEN NO TOUCH)
+    crate::spawn!(spawner, crate::gui::pages::touch_task(touch_int));
     // DISPLAY TASK
-    crate::spawn!(spawner, display_task(fb, display));
-    // RTC TASK 
-    crate::spawn!(spawner, crate::components::pcf85063a::rtc_update_task());
+    crate::spawn!(spawner, display_task(fb, display, te_pin));
 
 
     // ───────────────────────────────────────────────────────────────────────
     // IT'S NOW SAFE TO CRANK UP THE AMP
-    // WITHOUT LOAD POPPING NOISE
-    amp.set_high();
+    // WITH NO LOAD POPPIN' NOISE
+    crate::amp_on();
     crate::delay_s!(1);
-
 
     // PLAY BOOT SOUND
     yo_esp::play_ding().await;
- 
+    crate::delay_s!(2);
 
+    // HAVING AMPPLIFIER ON WHEN NOT USED IS NOT BEST PRACTICE & BURNS BATTERY!
+    // WE TURN IT BACK ON AGAIN ONLY WHEN AUDIO WILL BE PLAYED
+    crate::amp_off();
+  
+      
     // MAIN LOOP
-    loop { // GET BATTERY STATUS
-        let (percent, voltage_mv, charging, usb_connected) = critical_section::with(|cs| {
-            let mut bus_ref = I2C_BUS.borrow_ref_mut(cs);
-            let i2c_bus = bus_ref.as_mut().unwrap();
-            (
-                pmu.get_battery_percent(i2c_bus).unwrap_or(0),
-                pmu.get_battery_voltage(i2c_bus).unwrap_or(0),
-                pmu.is_charging(i2c_bus).unwrap_or(false),
-                pmu.is_vbus_in(i2c_bus).unwrap_or(false),
-            )
-        });
-
-        // CALCULATE DEVICE UPTIME
+    loop { // CALCULATE TIME SINCE BOOT
         let elapsed = embassy_time::Instant::now() - boot_time;
         let uptime_secs = elapsed.as_secs() as u32;
         let days = elapsed.as_secs() / 86400;
         let hours = (elapsed.as_secs() % 86400) / 3600;
         let minutes = (elapsed.as_secs() % 3600) / 60;
-
-        // STORE ATOMIC VARIABLES
-        if percent == 100 {
-            crate::store!(crate::state::BATTERY_FULL, true);
-        } else { crate::store!(crate::state::BATTERY_FULL, false); }
-        if percent < 25 {
-            crate::store!(crate::state::BATTERY_NEED_CHARGING, true);
-        } else { crate::store!(crate::state::BATTERY_NEED_CHARGING, false); }
+        // & STORE IT
         crate::store!(crate::state::UPTIME_SECS, uptime_secs);
-        crate::store!(crate::state::BATTERY_VOLTAGE, voltage_mv as u32);
-        crate::store!(crate::state::BATTERY_PERCENT, percent);
-        crate::store!(crate::state::BATTERY_CHARGING, charging);
-        crate::store!(crate::state::BATTERY_USB_CONNECTED, usb_connected);
 
-        // TIME: (HH:MM:SS)
-        let maybe_time = critical_section::with(|cs| crate::state::CURRENT_TIME.borrow(cs).get());
-        if let Some(dt) = maybe_time {
-            defmt::info!("⏰ {:02}:{:02}:{:02}", dt.hours, dt.minutes, dt.seconds);   // logging stays
-            let secs = dt.hours as u32 * 3600 + dt.minutes as u32 * 60 + dt.seconds as u32;
-            crate::store!(crate::state::CURRENT_TIME_SECS, secs);
-        }
+        // +1 MINUTE TO CURRENT TIME
+        critical_section::with(|cs| {
+            let time_cell = crate::state::CURRENT_TIME.borrow(cs);
+            if let Some(mut dt) = time_cell.get() {
+                crate::components::pcf85063a::up_one_min(&mut dt);
+                time_cell.set(Some(dt));
+            }
+        });
 
-        // FORMAT
-        let rssi = crate::load!(crate::state::RSSI);
-        let emoji = match (percent, charging) {
-            (0..=10, false) => "🪫⚠️",
-            (0..=10, true)  => "🪫⚡",
-            (11..=29, false) => "🪫",
-            (11..=29, true)  => "🪫⚡",
-            (30..=70, false) => "🔋",
-            (30..=70, true)  => "🔋⚡",
-            (_, false)       => "🔋",
-            (_, true)        => "🔋⚡",
-        };
-        
-        // PRINT BATTERY INFORMATION
-        defmt::info!("{} {}% ({} mV)", emoji, percent, voltage_mv);
-        // PRINT WIFI SIGNAL STRENGTH
-        defmt::info!("🛜 {} dBm", rssi);
-        // PRINT UPTIME (TIME SINCE BOOT)
+        // PRINT TIME + UPTIME
         if days > 0 {
             if hours > 0 {
                 defmt::info!("⏱️  {}D {:02}H {:02}M uptime", days, hours, minutes);
@@ -691,12 +856,48 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
         } else if hours > 0 {
             defmt::info!("⏱️  {:02}H {:02}M uptime", hours, minutes);
         } else { defmt::info!("⏱️  {:02}M uptime", minutes); }
-
-        // REDRAW THE DISPLAY (IT'S DIRTY!)
-        crate::dirty!();
-        // EVERY MINUTE
-        crate::delay_s!(60);        
+        let maybe_time = critical_section::with(|cs| crate::state::CURRENT_TIME.borrow(cs).get());
+        if let Some(dt) = maybe_time { defmt::info!("⏰ {:02}:{:02}", dt.hours, dt.minutes); }
         
+        // POLL BATTERY STATUS FROM I2C BUS
+        // BUT ONLY EVERY 5TH MINUTE SINCE THIS DRAWS BATTERY
+        if minutes % 10 == 5 {
+            let (percent, voltage_mv, usb_connected) = critical_section::with(|cs| {
+                let mut bus_ref = I2C_BUS.borrow_ref_mut(cs);
+                let i2c_bus = bus_ref.as_mut().unwrap();
+                (
+                    pmu.get_battery_percent(i2c_bus).unwrap_or(0),
+                    pmu.get_battery_voltage(i2c_bus).unwrap_or(0),
+                    pmu.is_vbus_in(i2c_bus).unwrap_or(false),
+                )
+            });
+ 
+            // STORE ATOMIC VARIABLES
+            if percent == 100 {
+                crate::store!(crate::state::BATTERY_FULL, true);
+            } else { crate::store!(crate::state::BATTERY_FULL, false); }
+            if percent < 25 {
+                crate::store!(crate::state::BATTERY_NEED_CHARGING, true);
+            } else { crate::store!(crate::state::BATTERY_NEED_CHARGING, false); }
+            crate::store!(crate::state::BATTERY_VOLTAGE, voltage_mv as u32);
+            crate::store!(crate::state::BATTERY_PERCENT, percent);
+            crate::store!(crate::state::BATTERY_USB_CONNECTED, usb_connected);
+        }
+        let percent = crate::load!(crate::state::BATTERY_PERCENT);
+        let mv = crate::load!(crate::state::BATTERY_VOLTAGE);        
+        let emoji = if crate::load!(crate::state::BATTERY_USB_CONNECTED) {"🔋⚡"} else { "🔋" };
+        
+        // PRINT WIFI SIGNAL & BATTERY INFO
+        let rssi = crate::load!(crate::state::RSSI);
+        defmt::info!("🛜 {} dBm", rssi);        
+        defmt::info!("{} {}% ({} mv)", emoji, percent, mv);
+        
+        // DISPLAY IS NOW DIRTY
+        crate::dirty!();
+        
+        // SLEEP 60 SECONDS AND RERUN LOOP
+        crate::delay_s!(60);      
+        // THE END!
     } // 🦆🧑‍🦯 thank you for quackin' along!
     // if you found this helpful - please concider buying me a coffee 
 } // ☕ ⮞ https://buymeacoffee.com/quackhackmcblindy

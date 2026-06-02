@@ -307,7 +307,7 @@ pub fn file_size(path: &str) -> Result<u32, SdError> {
         } else {
             match vol_mgr.open_dir(root_dir, dir_name.as_str()) {
                 Ok(d) => {
-                    defmt::debug!("file_size: subdir '{}' opened", dir_name);
+                    defmt::debug!("file_size: subdir '{}' opened", dir_name.as_str());
                     d
                 },
                 Err(e) => {
@@ -335,7 +335,7 @@ pub fn file_size(path: &str) -> Result<u32, SdError> {
                         alloc::format!("{}.{}", base.trim(), ext.trim())
                     }
                 };
-                defmt::trace!("file_size: checking entry '{}'", full);
+                defmt::trace!("file_size: checking entry '{}'", full.as_str());
                 if full.eq_ignore_ascii_case(&file_name) {
                     found_size = Some(entry.size);
                     defmt::debug!("file_size: match! size={}", entry.size);
@@ -638,7 +638,7 @@ pub fn create_file_for_writing(path: &str) -> Result<SdFileWriter, SdError> {
         } else {
             match vol_mgr.open_dir(root_dir, dir_name.as_str()) {
                 Ok(sub) => {
-                    vol_mgr.close_dir(root_dir).ok(); // root no longer needed
+                    vol_mgr.close_dir(root_dir).ok();
                     sub
                 }
                 Err(_) => {
@@ -653,7 +653,7 @@ pub fn create_file_for_writing(path: &str) -> Result<SdFileWriter, SdError> {
 
         // CONVERT TO 8.3 SHORT NAME
         let short_name = to_short_filename(&file_name);
-        defmt::debug!("short name: '{}'", short_name);
+        defmt::debug!("short name: '{}'", short_name.as_str());
 
         // OPEN/CREATE/TRUNCATE FILE
         let raw_file = vol_mgr
@@ -767,4 +767,101 @@ fn ensure_sd_ready() -> Result<(), SdError> {
         let _ = STORAGE_CMD.try_send(StorageCommand::Enable);
         Err(SdError::NotInitialized)
     }
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// PLAYLIST MANIPULATION
+const PLAYLIST_PATH: &str = "/Music/playlist.m3u";
+
+// APPEND A SONG TO THE PLAYLIST (FILENAME)
+pub fn append_to_playlist(song_name: &str) -> Result<(), SdError> {
+    let mut entries = read_playlist_entries()?;
+    entries.push((Some(alloc::format!("#EXTINF:-1,{}", song_name)), song_name.to_string()));
+    write_playlist_entries(&entries)
+}
+
+// REMOVE ENTRY FROM THE PLAYLIST.
+pub fn remove_from_playlist(song_name: &str) -> Result<(), SdError> {
+    let entries = read_playlist_entries()?;
+    let filtered: Vec<_> = entries
+        .into_iter()
+        .filter(|(_, name)| name != song_name)
+        .collect();
+    // IF NO ENTRIES LEFT STILL WRITE HEADER
+    write_playlist_entries(&filtered)
+}
+
+// CLEAR THE ENTIRE PLAYLIST.
+pub fn clear_playlist() -> Result<(), SdError> {
+    write_playlist_entries(&[])
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// PRIVATE PLAYLIST HELPERS
+
+// READ THE PLAYLIST INTO A LIST OF `(OPTIONAL #EXTINF LINE, FILE PATH)`
+fn read_playlist_entries() -> Result<Vec<(Option<String>, String)>, SdError> {
+    match read_file_to_vec(PLAYLIST_PATH) {
+        Ok(data) => {
+            let text = core::str::from_utf8(&data).map_err(|_| SdError::Read)?;
+            Ok(parse_playlist_entries(text))
+        }
+        Err(SdError::File) => {
+            // NO PLAYLIST YET – TREAT AS EMPTY.
+            Ok(Vec::new())
+        }
+        Err(e) => Err(e),
+    }
+}
+
+// WRITE THE LIST OF ENTRIES BACK TO THE PLAYLIST FILE
+fn write_playlist_entries(entries: &[(Option<String>, String)]) -> Result<(), SdError> {
+    let mut content = String::with_capacity(256);
+    content.push_str("#EXTM3U\n");
+    for (tag, path) in entries {
+        if let Some(t) = tag {
+            content.push_str(t);
+            content.push('\n');
+        }
+        content.push_str(path);
+        content.push('\n');
+    }
+    write_file(PLAYLIST_PATH, content.as_bytes())
+}
+
+// PARSE PLAYLIST TEXT INTO ENTRIES - IGNORING THE HEADER `#EXTM3U`
+fn parse_playlist_entries(text: &str) -> Vec<(Option<String>, String)> {
+    let lines: Vec<&str> = text.lines().collect();
+    let mut entries = Vec::new();
+    let mut i = 0;
+
+    // SKIP OPTIONAL HEADER
+    if i < lines.len() && lines[i].trim() == "#EXTM3U" {
+        i += 1;
+    }
+
+    while i < lines.len() {
+        let line = lines[i].trim().to_string();
+        if line.is_empty() {
+            i += 1;
+            continue;
+        }
+        if line.starts_with("#EXTINF") {
+            let tag = Some(line);
+            i += 1;
+            if i < lines.len() {
+                let path = lines[i].trim().to_string();
+                entries.push((tag, path));
+                i += 1;
+            } else {
+                // DANGLING #EXTINF – IGNORE IT!
+                break;
+            }
+        } else {
+            // PLAIN FILE PATH WITHOUT A PRECEDING TAG
+            entries.push((None, line));
+            i += 1;
+        }
+    }
+    entries
 }

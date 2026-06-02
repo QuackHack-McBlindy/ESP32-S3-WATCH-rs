@@ -23,117 +23,144 @@ pub const ROBOTO_REGULAR: &[u8] = include_bytes!(concat!(
 // SETTINGS ICONS
 pub const SETTINGS_ALERT_TRIANGLE_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/alert-triangle.png"
+    "/assets/apps/settings/alert-triangle.png"
+));
+
+pub const SETTINGS_AMP_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/amp.png"
+));
+
+pub const SETTINGS_BATTERY_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/battery.png"
+));
+
+pub const SETTINGS_BATTERY_CHARGING_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/battery-charging.png"
+));
+
+pub const SETTINGS_BAR_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/bar-chart.png"
+));
+
+pub const SETTINGS_GITHUB_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/github.png"
+));
+
+pub const SETTINGS_ARROW_DOWN_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/arrow-down.png"
 ));
 
 pub const SETTINGS_BLUETOOTH_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/bluetooth.png"
+    "/assets/apps/settings/bluetooth.png"
 ));
 
 pub const SETTINGS_CAST_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/cast.png"
+    "/assets/apps/settings/cast.png"
+));
+
+pub const SETTINGS_DISPLAY_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/display.png"
+));
+
+pub const SETTINGS_WAKE_WORD_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/wakeword.png"
+));
+
+pub const SETTINGS_INFO_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/info.png"
 ));
 
 pub const SETTINGS_DELETE_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/delete.png"
+    "/assets/apps/settings/delete.png"
 ));
 
-pub const SETTINGS_GLOBE_PNG: &[u8] = include_bytes!(concat!(
+pub const SETTINGS_API_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/globe.png"
+    "/assets/apps/settings/api.png"
 ));
 
-pub const SETTINGS_MESSAGE_CIRCLE_PNG: &[u8] = include_bytes!(concat!(
+pub const SETTINGS_MIC_ON_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/message-circle.png"
-));
-
-pub const SETTINGS_MIC_PNG: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/mic.png"
+    "/assets/apps/settings/mic-on.png"
 ));
 
 pub const SETTINGS_MIC_OFF_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/mic-off.png"
+    "/assets/apps/settings/mic-off.png"
 ));
+
 
 pub const SETTINGS_SETTINGS_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/settings.png"
+    "/assets/apps/settings/settings.png"
 ));
 
 pub const SETTINGS_SLASH_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/slash.png"
+    "/assets/apps/settings/slash.png"
 ));
 
-pub const SETTINGS_SPEAKER_PNG: &[u8] = include_bytes!(concat!(
+pub const SETTINGS_VOLUME_0_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/speaker.png"
-));
-
-pub const SETTINGS_SUN_PNG: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/sun.png"
-));
-
-pub const SETTINGS_TERMINAL_PNG: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/terminal.png"
-));
-
-pub const SETTINGS_TOGGLE_LEFT_PNG: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/toggle-left.png"
-));
-
-pub const SETTINGS_TOGGLE_RIGHT_PNG: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/toggle-right.png"
-));
-
-pub const SETTINGS_TOOL_PNG: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/tool.png"
-));
-
-pub const SETTINGS_VOLUME_PNG: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/volume.png"
+    "/assets/apps/settings/volume-0.png"
 ));
 
 pub const SETTINGS_VOLUME_1_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/volume-1.png"
+    "/assets/apps/settings/volume-1.png"
 ));
 
 pub const SETTINGS_VOLUME_2_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/volume-2.png"
+    "/assets/apps/settings/volume-2.png"
 ));
 
-pub const SETTINGS_VOLUME_X_PNG: &[u8] = include_bytes!(concat!(
+pub const SETTINGS_SPEAKER_OFF_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/volume-x.png"
+    "/assets/apps/settings/speaker-off.png"
 ));
+
+pub const SETTINGS_BRIGHTNESS_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/brightness.png"
+));
+
+pub const SETTINGS_TERMINAL_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/terminal.png"
+));
+
+pub const SETTINGS_TOOL_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/tool.png"
+));
+
 
 pub const SETTINGS_WATCH_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/watch.png"
+    "/assets/apps/settings/watch.png"
 ));
 
 pub const SETTINGS_WIFI_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/wifi.png"
+    "/assets/apps/settings/wifi-on.png"
 ));
 
 pub const SETTINGS_WIFI_OFF_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/icons/wifi-off.png"
+    "/assets/apps/settings/wifi-off.png"
 ));
 
 
@@ -152,9 +179,14 @@ pub const SETTINGS_PNG: &[u8] = include_bytes!(concat!(
     "/assets/apps/settings.png"
 ));
 
-pub const APP3_PNG: &[u8] = include_bytes!(concat!(
+pub const DUCKCLOUD_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/apps/app3.png"
+    "/assets/apps/duckcloud.png"
+));
+
+pub const DUCK_TV_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/duck-tv.png"
 ));
 
 pub const HOUSE_PNG: &[u8] = include_bytes!(concat!(
@@ -168,6 +200,11 @@ pub const QWACKIFY_PNG: &[u8] = include_bytes!(concat!(
 ));
 
 // IN-APP PNG IMAGES
+pub const SETTINGS_WIFI_ON_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/wifi-on.png"
+));
+
 pub const HOUSE_LIGHTS_ON_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/apps/house/lights_on.png"
@@ -193,15 +230,31 @@ pub const MEDIA_PREVIOUS_PNG: &[u8] = include_bytes!(concat!(
     "/assets/apps/media_player/previous.png"
 ));
 
+pub const MEDIA_HEART_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/media_player/heart.png"
+));
+
+pub const MEDIA_CLEAR_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/media_player/clear.png"
+));
+
 pub const CALL_ACCEPT_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/call_accept.png"
+    "/assets/apps/call/call_accept.png"
 ));
 
 pub const CALL_DECLINE_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/call_decline.png"
+    "/assets/apps/call/call_decline.png"
 ));
+
+pub const WEATHER_DRIZZLE_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/tinyweather/cloud-drizzle.png"
+));
+
 
 // ───────────────────────────────────────────────────────────────────────
 // SOUNDS

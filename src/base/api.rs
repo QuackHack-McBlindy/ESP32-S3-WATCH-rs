@@ -60,6 +60,23 @@ pub async fn init_routes() {
     // SEARCH/SONGS/{QUERY}
     tinyapi::register_route("/api/media/search/songs/{value}", crate::base::routes::api::media::search::songs::fuzzy_songs::fuzzy_songs_handler).await;    
 
+    // PLAYLIST/ADD/{QUERY}
+    tinyapi::register_route("/api/media/playlist/add/{value}", crate::base::routes::api::media::playlist::append::add_to_playlist_handler).await;    
+
+    // PLAYLIST/REMOVE/{QUERY}
+    tinyapi::register_route("/api/media/playlist/remove/{value}", crate::base::routes::api::media::playlist::remove::remove_from_playlist_handler).await;  
+
+    // PLAYLIST/CLEAR
+    tinyapi::register_route("/api/media/playlist/clear", crate::base::routes::api::media::playlist::clear::clear_playlist_handler).await;  
+
+
+
+    // ───────────────────────────────────────────────────────────────────────
+    // /API/SETTINGS/API (GET)
+
+    // OFF
+    tinyapi::register_async_route("/api/settings/api/off", crate::base::routes::api::settings::api::off::disable_api).await;  
+
 
     // ───────────────────────────────────────────────────────────────────────
     // /API/SETTINGS/MIC (GET)
@@ -73,18 +90,32 @@ pub async fn init_routes() {
 
     // ───────────────────────────────────────────────────────────────────────
     // /API/SETTINGS/SPEAKER (GET)
+
+    // ON/OFF
+    tinyapi::register_async_route("/api/settings/speaker/{value}", crate::base::routes::api::settings::speaker::toggle::toggle_handler).await;
     
-    // VOLUME    
+    // VOLUME (0-100)  
     tinyapi::register_route("/api/settings/speaker/volume/{value}", crate::base::routes::api::settings::speaker::volume::speaker_volume_handler).await;
 
-    // MUTE    
+    // MUTE (on/off)  
     tinyapi::register_route("/api/settings/speaker/mute/{value}", crate::base::routes::api::settings::speaker::mute::speaker_mute_handler).await;  
+
+    // AMP (on/off/toggle)  
+    tinyapi::register_route("/api/settings/speaker/amp/{value}", crate::base::routes::api::settings::speaker::amp::amp_handler).await;  
+
+
+    // STREAM (on/off)
+    tinyapi::register_async_route("/api/settings/speaker/stream/{value}", crate::base::routes::api::settings::speaker::stream::stream_handler).await;  
+
 
     // ───────────────────────────────────────────────────────────────────────
     // /API/SETTINGS/VOICE (GET)
-    
+
+    // ON/OFF/TOGGLE (THE ENTIRE PIPELINE)
+    tinyapi::register_async_route("/api/settings/voice/{value}", crate::base::routes::api::settings::voice::state::voice_handler).await;
+        
     // WAKEWORD (on/off) 
-    tinyapi::register_route("/api/settings/voice/wakeword/{value}", crate::base::routes::api::settings::voice::wakeword::wake_word_handler).await;
+    tinyapi::register_async_route("/api/settings/voice/wakeword/{value}", crate::base::routes::api::settings::voice::wakeword::wake_word_handler).await;
     
 
     // ───────────────────────────────────────────────────────────────────────
@@ -104,6 +135,10 @@ pub async fn init_routes() {
 
     // CALL
     tinyapi::register_route("/api/settings/display/call/{value}", crate::base::routes::api::settings::display::call::call_handler).await;
+
+    // REDRAW
+    tinyapi::register_route("/api/settings/display/redraw", crate::base::routes::api::settings::display::redraw::display_redraw_handler).await;
+
 
     // ───────────────────────────────────────────────────────────────────────
     // /API/SETTINGS/WIFI (GET)

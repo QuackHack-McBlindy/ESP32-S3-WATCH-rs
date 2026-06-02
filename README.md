@@ -221,10 +221,13 @@ Extend with more crazy ideas as they pop up. `ESP32-S3-WATCH-rs` is still under 
 - [x] Intercom `ffmpeg -f alsa -i default -f s16le -ar 16000 -ac 2 - | nc <ESP_IP> 12345`
 - [x] On-Device API
 - [x] On-Device WebServer & Web Media Player (with casting to Android TV)
+- [x] Control & start/pause any task from the GUI 
 - [ ] Draw graphs on watch from input data 
 - [ ] Generate on-device QR codes. (need TLS for secure secret sharing via QR)
 - [x] Broadcasting all text-to-speech to every ESP32 device.   
+- [ ] tinyWeather app - (GeoByIP, one icon - no token)
 - [ ] Phone calls/text message (Bluetooth HandsFree Protocol)
+- [ ] Remember settings changes between boots/firmware updates
 - [x] Backend: `yo`
 
 `yo` is not only the backend server service but it's also where you will write your voice commands.  
@@ -358,22 +361,29 @@ curl http://<ESP_IP>/api/settings/display/brightness/75
 | `/api/sensors` | Returns all sensor/system values as JSON |
 | `/api/media/play` | Sends `play` command to the media player. Starts the playback |
 | `/api/media/pause` | Sends `pause` command to the media player. Pauses the playback |
-| `/api/media/previous` | Sends `previous` command to the media player. Plays previous track |
+| `/api/media/prev` | Sends `previous` command to the media player. Plays previous track |
 | `/api/media/next` | Sends `next` command to the media player. Plays next track |
+| `/api/media/heart` | Saves currently playing track to your favourite playlist. |
 | `/api/media/search/songs/{song}` | Fuzzy search & play MP3 files from SD card. Returns matching song names and starts playback |
+| `/api/settings/api/off` | Stops the internal API (including webserver). **Note: use GUI to turn back on** |
 | `/api/settings/bluetooth/{value}` | Set bluetooth state (on/off). |
 | `/api/settings/mic/volume/{value}` | Set microphone gain (0–100%). `{value}` as integer percent |
 | `/api/settings/mic/mute/{value}` | Mute/unmute mic: `1`/`on`/`mute`, `0`/`off`/`unmute`, or `toggle` |
+| `/api/settings/speaker/{value}` | Toggle speaker task on/off |
+| `/api/settings/speaker/stream/{value}` | Toggle speaker streaming task on/off |
 | `/api/settings/speaker/volume/{value}` | Set speaker volume (0–100%) |
 | `/api/settings/speaker/mute/{value}` | Mute/unmute speaker: same options as mic mute |
+| `/api/settings/voice/{value}` | GET | Enable/disable/toggle the entire voice pipeline. |
 | `/api/settings/voice/wakeword/{value}` | GET | Enable/disable wake‑word streaming (`on`, `off`, `enable`, `disable`) |
 | `/api/settings/display/brightness/{value}` | Set backlight brightness (0–100%). `{value}` as integer percent |
 | `/api/settings/display/state/{value}` | Set display state (on/off). |
+| `/api/settings/display/redraw` | Force a redraw of the display. |
+| `/api/settings/display/timeout/{value}` | Seconds of inactivety display should wait before automatically turning off. |
 | `/api/settings/display/call/{value}` | Run this endpoiint with the callers name from iPhone when you receieve a phone call to display the calling page on the watch. This page let's user accept/decline the call. |
 | `/api/settings/display/page/{value}` | Change display page. `{value}` integer: 0=clock,1=battery,2=apps,10=media player, etc. |
 | `/api/settings/display/text/{value}` | Displays the provided value as a large text on the display. |
-| `/api/settings/wifi/set/ssid/{ssid}/password/{password}` | Saves a WiFi SSID to the WiFI connection list |
-| `/api/settings/wifi/off` | Turns off the WiFi **Note: turning on WiFi via API call not possible!** |
+| `/api/settings/wifi/set/ssid/{ssid}/password/{password}` | (TODO) Saves a WiFi SSID to the WiFI connection list |
+| `/api/settings/wifi/off` | Turns off the WiFi **Note: use GUI to turn back on** |
 
 
 ### Supported sensor keys for `/api/sensor/{value}`
@@ -382,12 +392,12 @@ curl http://<ESP_IP>/api/settings/display/brightness/75
 |--------------------------------------------------------------|-------------------------------------|
 | `battery`, `battery_level`, `battery_percentage`             | Battery charge in percent           |
 | `battery_voltage`, `voltage`                                 | Battery voltage in millivolts       |
-| `battery_charging`                                           | Charging status (0 or 1)            |
-| `battery_need_charging`                                      | Low battery warning (0 or 1)        |
-| `battery_full`                                               | Battery full flag (0 or 1)          |
-| `battery_usb_connected`                                      | USB connection status (0 or 1)      |
+| `battery_charging`                                           | Charging status                     |
+| `battery_need_charging`                                      | Low battery warning                 |
+| `battery_full`                                               | Battery full flag                   |
+| `battery_usb_connected`                                      | USB connection status               |
 | `brightness`, `display`                                      | Display brightness (0–100)          |
-| `display_state`                                              | Display power state (0 = off, 1 = on)|
+| `display_state`                                              | Display power state                 |
 | `rssi`, `wifi_signal`, `wifi`                                | Wi‑Fi signal strength in dBm        |
 | `ip`                                                         | Device IPv4 address                 |
 | `speaker`                                                    | Speaker volume (0–100)              |
@@ -395,6 +405,13 @@ curl http://<ESP_IP>/api/settings/display/brightness/75
 | `uptime`                                                     | System uptime (e.g., "02h 15m 30s") |
 | `time`                                                       | Current time in HH:MM:SS            |
 | `firmware`, `version`                                        | Firmware version string             |
+| `mic_muted`                                                  | Microphone mute state               |
+| `speaker_muted`                                              | Speaker mute state                  |
+| `speaker_task_state`                                         | Speaker task running                |
+| `speaker_allow_streaming`                                    | Streaming allowed flag              |
+| `amplifier_state`                                            | Audio amplifier power state         |         
+| `sd_ready`                                                   | SD card ready status                |
+| `media_is_playing`                                           | Media playback active               |
 
 
 ### **Shell**
@@ -718,19 +735,36 @@ Audio codecs (ES7210/ES8311) are configured via I2C, and are used as slaves.
 
 ## **Graphical User Interface**
 
-The GUI is currently pretty basic. It has a default "home" page with a digital clock, and when swiping left it will display battery status.  
-Pressing the boot button will display the application launcher which let's the user scroll smoothly through the applications, double tapping an image will open the app. 
-A upwards swipe gesture will close the open application and display the digital clock again.  
+You boot up at the clock page.  
+Swiping down from the very top of the screen slides down the control center which has 4 quick access button slots.  
+Swipe left to get to the app launcher, which has 1x1 big icons that smoothly scrolls like a list.  
+Tapping an app does nothing (to prevent accidental openings).  
+Double tap will open the application.  
+A upwards swipe gesture from the very bottom will close the open application and send user back to homescreen (clock page).  
+  
 
+Going right from the clock page will show the battery page which has a clean looking ARC gauge with an bolt when charging.   
+
+To the right of the battery page we have **tinyWeather** which shows temperature and a big weather icon.     
+
+Inside the **Qwackify** (media player) application clicking the Qwackify icon will split the view into two pieces that slide apart and show the playlist.  
+The trashcan will clear the temporary playlist without confirmation.  
+CLicking the heart icon will save current song to your favourite playlist.  
 
 <br>
 
 
 ## **Applications**  
 
+**Settings** - From the settings application user can control all settings at runtime using toggle switch buttons in the GUI and/or swipe gestures, like speaker volume swipe up/down for example.  
+All the embassy-executor tasks can also be started/paused from this application.  
+
+
 **Qwackify** - a media player with play/pause & previous/next track buttons, title & progress bar.  
   
 **House** - Smart Home application with some quick action buttons etc, most of the home control is done by voice anyway.  
+
+**tinyWeather** - More of a widget than an app really. Displays the current temperature and an icon representing current weather state on the display. Only updates when manually clicked.
   
 Will extend with more applications as I think of any useful ones.  
 
@@ -739,12 +773,7 @@ Will extend with more applications as I think of any useful ones.
 
 ## **Power Management & Optimizations**  
 
-The watch is basically running the CPU on max all the time because of all the heavy lifting.   
-Battery optimization will be done after some more usage.  
-The biggest battery saving win you can do right now is holding down the power button for 5 seconds when it's not going to be actively used - which will put the device into deep sleep.  
-Holding the  power button again will wake it up again.   
-
-As battery is not really optimized yet, it drains pretty quickly but it recharges very fast too (rougly 10-15 minutes).  
+User control all tasks/peripherals from the GUI, and therefore handle their own optimizations.  
 
 <br>
 

@@ -151,12 +151,28 @@ pub async fn ntp_sync(stack: &embassy_net::Stack<'static>) -> Result<(), &'stati
                         year: (year % 100) as u8,
                     };
                     let _ = rtc.set_time(&dt);
+                    
+                    crate::state::CURRENT_TIME.borrow(cs).set(Some(dt));
                 }
             });
             Ok(())
         }
         _ => Err("NTP response timeout or invalid"),
     }
+}
+
+pub fn up_one_min(dt: &mut crate::components::pcf85063a::DateTime) {
+    dt.seconds = 0;
+    dt.minutes += 1;
+    if dt.minutes < 60 {
+        return;
+    }
+    dt.minutes = 0;
+    dt.hours += 1;
+    if dt.hours < 24 {
+        return;
+    }
+    dt.hours = 0;
 }
 
 // RETURN OFFSET IN SECONDS (POSITIVE FOR UTC+1 OR +2)
@@ -222,22 +238,4 @@ fn days_to_date(mut days: i32) -> (u32, u32, u32) {
 
 fn is_leap_year(year: i32) -> bool {
     year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
-}
-
-
-// BACKGROUND TASK: READ RTC AND STORE IN GLOBAL STATE
-#[embassy_executor::task]
-pub async fn rtc_update_task() {
-    loop {
-        critical_section::with(|cs| {
-            let mut bus_ref = crate::I2C_BUS.borrow_ref_mut(cs);
-            if let Some(i2c_bus) = bus_ref.as_mut() {
-                let mut rtc = Pcf85063aRtc::new(i2c_bus);
-                if let Ok(dt) = rtc.get_time() {
-                    crate::state::CURRENT_TIME.borrow(cs).set(Some(dt));
-                }
-            }
-        });
-        embassy_time::Timer::after(embassy_time::Duration::from_secs(1)).await;
-    }
 }

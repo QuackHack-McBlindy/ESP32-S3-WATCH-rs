@@ -1,11 +1,11 @@
 // APPLICATIONS/MOD
 
-
 // ───────────────────────────────────────────────────────────────────────
 // LOAD APP MODULES
-pub mod media_player;
+pub mod media_player; // QWACKIFY
+pub mod duck_tv;
+pub mod duckcloud;
 pub mod settings;
-pub mod app3;
 pub mod house;
 
 
@@ -14,26 +14,17 @@ pub mod house;
 pub struct AppDescriptor {
     pub name: &'static str,
     pub description: &'static str,
-    pub grid_position: GridSlot,
     pub launch: fn(),
     pub icon: &'static [u8],
 }
 
-// ENUM FOR APP ICON GRID LOCATION
-#[derive(Clone, Copy, PartialEq)]
-pub enum GridSlot {
-    TopLeft = 0,
-    TopRight = 1,
-    BottomLeft = 2,
-    BottomRight = 3,
-}
-
-
 // ───────────────────────────────────────────────────────────────────────
 // FETCH ALL APPDESCRIPTIORS
+// APP LAUNCHER LIST APPS IN SAME ORDER AS THEY'RE LISTED HERE!
 pub static APPS: &[AppDescriptor] = &[
     media_player::APP_DESCRIPTOR,
-    settings::APP_DESCRIPTOR,
-    app3::APP_DESCRIPTOR,
+    duck_tv::APP_DESCRIPTOR,
     house::APP_DESCRIPTOR,
+    duckcloud::APP_DESCRIPTOR,
+    settings::APP_DESCRIPTOR,
 ];    

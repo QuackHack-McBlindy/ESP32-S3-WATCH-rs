@@ -26,6 +26,10 @@ impl Framebuffer {
         core::mem::swap(&mut self.buf, &mut self.back);
     }
 
+    pub fn back_buffer_mut(&mut self) -> &mut [u16] {
+        &mut self.back
+    }
+    
     /// CLEAR THE ENTIRE FRAMEBUFFER WITH A COLOR.
     pub fn clear_color(&mut self, color: embedded_graphics_core::pixelcolor::Rgb565) {
         let raw_u16: embedded_graphics_core::pixelcolor::raw::RawU16 =
@@ -75,20 +79,6 @@ impl Framebuffer {
         }
         display.set_addr_window(0, 0, WIDTH as u16, HEIGHT as u16);
         display.bus_mut().write_pixels(&self.buf);
-    }
-
-    /// VSYNC FLUSH FOR WATCHFACE / MENUS. SAME AS swap_and_flush BUT KEPT DISTINCT FOR CLARITY.
-    pub fn flush_vsync(
-        &self,
-        display: &mut crate::components::co5300::Co5300Display,
-        te: &esp_hal::gpio::Input<'_>,
-    ) {
-        for _ in 0..400 {
-            if te.is_high() {
-                break;
-            }
-        }
-        self.flush(display);
     }
 
     /// FLUSH THE ENTIRE FRAMEBUFFER TO THE DISPLAY VIA DMA QSPI.
@@ -162,6 +152,8 @@ impl embedded_graphics_core::geometry::OriginDimensions for Framebuffer {
         embedded_graphics_core::geometry::Size::new(WIDTH as u32, HEIGHT as u32)
     }
 }
+
+
 
 impl embedded_graphics_core::draw_target::DrawTarget for Framebuffer {
     type Color = embedded_graphics_core::pixelcolor::Rgb565;

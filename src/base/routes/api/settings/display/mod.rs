@@ -4,3 +4,4 @@ pub mod brightness;
 pub mod page;
 pub mod call;
 pub mod text;
+pub mod redraw;

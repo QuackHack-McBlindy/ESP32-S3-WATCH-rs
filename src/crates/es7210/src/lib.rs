@@ -327,6 +327,9 @@ impl Es7210 {
         self.write_reg(i2c, MIC12_POWER_REG4B, 0x0F)?;
         self.write_reg(i2c, MIC34_POWER_REG4C, 0x0F)?;
 
+        //self.write_reg(i2c, ADC_AUTOMUTE_REG13, 0x40)?;
+        //self.write_reg(i2c, ALC_SEL_REG16, 0x80)?;
+
         // Start the device
         self.write_reg(i2c, RESET_REG00, 0x71)?;
         self.write_reg(i2c, RESET_REG00, 0x41)?;

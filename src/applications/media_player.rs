@@ -7,7 +7,6 @@
 pub const APP_DESCRIPTOR: crate::applications::AppDescriptor = crate::applications::AppDescriptor {
     name: "Qwackify",
     description: "Play MP3 songs from the SD card",
-    grid_position: crate::applications::GridSlot::TopLeft,
     launch: open_app,
     icon: crate::base::assets::QWACKIFY_PNG,
 };
@@ -550,6 +549,7 @@ pub async fn media_command_task(spawner: embassy_executor::Spawner) {
             } // PLAY/PAUSE
             MediaCommand::PlayPause => {
                 defmt::info!("Received command: Play/Pause media");
+                crate::amp_on();
                 if playlist_len() == 0 {
                     // NO TRACKS IN PLAYLIST – TRY TO START PLAYBACK ANYWAY (WILL PICK ANY MP3)
                     let _ = start_playback(spawner).await;
@@ -568,7 +568,13 @@ pub async fn media_command_task(spawner: embassy_executor::Spawner) {
                 if playlist_len() > 0 {
                     next(spawner).await;
                 }
-            }
+            } // HEART
+            MediaCommand::Heart => {
+                defmt::info!("Received command: Heart");
+            } // CLEAR    
+            MediaCommand::Clear => {
+                defmt::info!("Received command: Clear");
+            }       
             MediaCommand::None => {}
         }
     }

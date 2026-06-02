@@ -10,7 +10,6 @@ use minipng::ColorType;
 #[cfg(feature = "defmt")]
 use defmt::info;
 
-
 /// Convert 24‑bit RGB (0x00RRGGBB) to Rgb565.
 fn from_rgb888(rgb: u32) -> Rgb565 {
     let r = ((rgb >> 16) & 0xFF) as u16;
@@ -104,8 +103,7 @@ impl Png {
     }
 }
 
-/// Draw a pre‑loaded PNG onto a display, skipping transparent (None) pixels.
-/// If feature `defmt` is enabled, logs the bounding rectangle `(x, y, width, height)`.
+/// Original full‑size drawing – unchanged.
 pub fn draw_png<D: DrawTarget<Color = Rgb565>>(
     display: &mut D,
     png: &Png,
@@ -131,10 +129,71 @@ pub fn draw_png<D: DrawTarget<Color = Rgb565>>(
     Ok(())
 }
 
-/// **Convenience function:** Draw a PNG directly from raw bytes.
-/// Decodes the PNG, then draws it at `(x, y)`.
-/// On decode error, this function **panics** (use `load_from_bytes` if you need error recovery).
-/// Logs the position and size if `defmt` is enabled.
+
+
+
+/// ------------------------------------------------------------------
+/// New: draw PNG with integer nearest‑neighbour scaling.
+/// `scale` must be ≥ 1.  `scale = 2` halves the width & height.
+/// ------------------------------------------------------------------
+pub fn draw_png_scaled<D: DrawTarget<Color = Rgb565>>(
+    display: &mut D,
+    png: &Png,
+    x: i32,
+    y: i32,
+    scale: u32,
+) -> Result<(), D::Error> {
+    if scale == 0 {
+        // Avoid division by zero; treat as no scaling.
+        return draw_png(display, png, x, y);
+    }
+
+    #[cfg(feature = "defmt")]
+    info!(
+        "draw_png_scaled: at ({}, {}) scale {} ({}x{} -> {}x{})",
+        x,
+        y,
+        scale,
+        png.width(),
+        png.height(),
+        png.width() / scale,
+        png.height() / scale
+    );
+
+    let width = png.width();
+    let height = png.height();
+    let pixels = png.pixels();
+
+    // Step through the source image in blocks of `scale × scale`.
+    // Each block contributes one output pixel (its top‑left pixel).
+    for row in (0..height).step_by(scale as usize) {
+        for col in (0..width).step_by(scale as usize) {
+            let idx = (row * width + col) as usize;
+            if let Some(color) = pixels[idx] {
+                let out_x = x + (col / scale) as i32;
+                let out_y = y + (row / scale) as i32;
+                Pixel(Point::new(out_x, out_y), color).draw(display)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// ------------------------------------------------------------------
+/// Convenience: decode bytes and draw scaled.
+/// ------------------------------------------------------------------
+pub fn draw_png_bytes_scaled<D: DrawTarget<Color = Rgb565>>(
+    display: &mut D,
+    png_data: &[u8],
+    x: i32,
+    y: i32,
+    scale: u32,
+) -> Result<(), D::Error> {
+    let png = Png::load_from_bytes(png_data).expect("PNG decoding failed");
+    draw_png_scaled(display, &png, x, y, scale)
+}
+
+/// Convenience: draw full‑size from bytes (unchanged).
 pub fn draw_png_bytes<D: DrawTarget<Color = Rgb565>>(
     display: &mut D,
     png_data: &[u8],
@@ -145,7 +204,7 @@ pub fn draw_png_bytes<D: DrawTarget<Color = Rgb565>>(
     draw_png(display, &png, x, y)
 }
 
-/// Same as `draw_png_bytes`, but draws at `(0, 0)`.
+/// Same as `draw_png_bytes`, but at (0,0).
 pub fn draw_png_bytes_at_origin<D: DrawTarget<Color = Rgb565>>(
     display: &mut D,
     png_data: &[u8],
@@ -153,7 +212,7 @@ pub fn draw_png_bytes_at_origin<D: DrawTarget<Color = Rgb565>>(
     draw_png_bytes(display, png_data, 0, 0)
 }
 
-/// Version that ignores draw errors (only useful when `D::Error = Infallible`, e.g., simulator).
+/// Version that ignores draw errors (only useful when D::Error = Infallible).
 pub fn draw_png_bytes_unwrap<D: DrawTarget<Color = Rgb565, Error = core::convert::Infallible>>(
     display: &mut D,
     png_data: &[u8],

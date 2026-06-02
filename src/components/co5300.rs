@@ -103,6 +103,11 @@ impl<'d> Co5300Display<'d> {
 
         // INVERSION OFF (STANDARD FOR THIS PANEL)
         self.bus.write_command(CMD_INVOFF);
+        
+        // ENABLE TEARING EFFECT (VBLANK ONLY)
+        self.bus.write_c8d8(0x35, 0x00);
+
+        self.delay.delay_millis(10);
     }
 
     /// SET THE ADDRESS WINDOW FOR PIXEL WRITES.

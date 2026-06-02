@@ -31,13 +31,21 @@ pub async fn buttons_task(
                 // MEDIA IS PLAYING > VOLUME UP
                 crate::applications::media_player::volume_up();
             } else {
-                // NO MEDIA > START PUSH-TO-TALK RECORDING
+                // NO MEDIA PLAYBACK > HOLD TO SEND A VOICE COMMAND
+                // 1. READY UP FOR AN RESPONSE FIRST
+                if !crate::load!(crate::state::AMPLIFIER_STATE) { crate::amp_on(); }             
+                if !crate::load!(crate::state::SPEAKER_ALLOW_STREAMING) {
+                    yo_esp::STREAM_CMD.send(yo_esp::StreamCommand::Start).await;
+                    crate::store!(crate::state::SPEAKER_ALLOW_STREAMING, true);                            
+                }    
+
+                // 2. START THE RECORDING                
                 let _ = yo_esp::VOICE_CMD.send(yo_esp::VoiceCommand::Pushed).await;
 
                 // HOLD THE TASK HERE UNTIL THE BUTTON IS RELEASED
                 wait_for_release(&mut boot_button).await;
 
-                // RELEASED - END PTT RECORDING
+                // 3. RELEASED BUTTON - END RECORDING & SEND TO BACKEND
                 let _ = yo_esp::VOICE_CMD.send(yo_esp::VoiceCommand::Released).await;
             }
 

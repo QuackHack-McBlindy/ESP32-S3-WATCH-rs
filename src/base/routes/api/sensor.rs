@@ -59,6 +59,15 @@ pub fn handle_sensors(_req: tinyapi::Request<'_>) -> tinyapi::Response {
     let ip = embassy_net::Ipv4Address::from(ip_raw);
     let version = crate::state::FW_VERSION;
 
+    // ADDITIONAL AUDIO & SYSTEM STATES
+    let mic_muted = crate::load!(crate::state::MIC_MUTED);
+    let speaker_muted = crate::load!(crate::state::SPEAKER_MUTED);
+    let speaker_task_state = crate::load!(crate::state::SPEAKER_TASK_STATE);
+    let speaker_allow_streaming = crate::load!(crate::state::SPEAKER_ALLOW_STREAMING);
+    let amplifier_state = crate::load!(crate::state::AMPLIFIER_STATE);
+    let sd_ready = crate::load!(crate::state::SD_READY);
+    let media_is_playing = crate::load!(crate::state::MEDIA_IS_PLAYING);
+
     // UPTIME (SECONDS SINCE BOOT)
     let uptime_secs = crate::load!(crate::state::UPTIME_SECS);
     let uptime_str = {
@@ -88,7 +97,7 @@ pub fn handle_sensors(_req: tinyapi::Request<'_>) -> tinyapi::Response {
 
     // FORMAT AS JSON
     let response_str = alloc::format!(
-        "{{\"battery_percent\":{},\"battery_voltage\":{},\"battery_charging\":{},\"battery_need_charging\":{},\"battery_full\":{},\"battery_usb_connected\":{},\"display_state\":{},\"rssi\":{},\"mic_volume\":{},\"speaker_volume\":{},\"brightness\":{},\"ip\":\"{}\",\"uptime\":\"{}\",\"time\":\"{}\",\"firmware\":\"{}\",\"media\":\"Nothing playing\"}}",
+        "{{\"battery_percent\":{},\"battery_voltage\":{},\"battery_charging\":{},\"battery_need_charging\":{},\"battery_full\":{},\"battery_usb_connected\":{},\"display_state\":{},\"rssi\":{},\"mic_volume\":{},\"speaker_volume\":{},\"brightness\":{},\"ip\":\"{}\",\"uptime\":\"{}\",\"time\":\"{}\",\"firmware\":\"{}\",\"mic_muted\":{},\"speaker_muted\":{},\"speaker_task_state\":{},\"speaker_allow_streaming\":{},\"amplifier_state\":{},\"sd_ready\":{},\"media_is_playing\":{},\"media\":\"Nothing playing\"}}",
         battery_percent,
         battery_voltage,
         battery_charging,
@@ -103,7 +112,14 @@ pub fn handle_sensors(_req: tinyapi::Request<'_>) -> tinyapi::Response {
         ip,
         uptime_str,
         time_str,
-        version
+        version,
+        mic_muted,
+        speaker_muted,
+        speaker_task_state,
+        speaker_allow_streaming,
+        amplifier_state,
+        sd_ready,
+        media_is_playing
     );
 
     tinyapi::Response::text(&response_str)

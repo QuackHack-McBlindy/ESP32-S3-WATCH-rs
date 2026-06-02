@@ -2,6 +2,7 @@
 // FT3168 TOUCH CONTROLLER DRIVER
 
 use embedded_hal::i2c::I2c;
+use heapless::Vec;
 
 const FT3168_ADDR: u8 = 0x38;
 
@@ -14,8 +15,31 @@ const REG_Y1_L: u8 = 0x06;
 const REG_POWER_MODE: u8 = 0xA5;
 const REG_GESTURE_ID: u8 = 0xD3;
 
+const FT3X68_RD_DEVICE_GESTUREID: u8 = 0xD3;
+const FT3X68_RD_DEVICE_FINGERNUM: u8 = 0x02;
+const FT3X68_RD_DEVICE_X1POSH: u8 = 0x03;
+const FT3X68_RD_DEVICE_X1POSL: u8 = 0x04;
+const FT3X68_RD_DEVICE_Y1POSH: u8 = 0x05;
+const FT3X68_RD_DEVICE_Y1POSL: u8 = 0x06;
+const FT3X68_RD_DEVICE_X2POSH: u8 = 0x09;
+const FT3X68_RD_DEVICE_X2POSL: u8 = 0x0A;
+const FT3X68_RD_DEVICE_Y2POSH: u8 = 0x0B;
+const FT3X68_RD_DEVICE_Y2POSL: u8 = 0x0C;
+const FT3X68_RD_WR_DEVICE_GESTUREID_MODE: u8 = 0xD0;
+const FT3X68_RD_WR_DEVICE_POWER_MODE: u8 = 0xA5;
+const FT3X68_RD_WR_DEVICE_PROXIMITY_SENSING_MODE: u8 = 0xB0;
+const FT3X68_RD_DEVICE_ID: u8 = 0xA0;
 
-#[derive(Debug, Clone, Copy, defmt::Format)] 
+#[derive(Clone, Copy, Debug)]
+#[repr(u8)]
+pub enum PowerMode {
+    Active = 0x00,
+    Monitor = 0x01,
+    Standby = 0x02,
+    Hibernate = 0x03,
+}
+
+#[derive(Debug, Clone, Copy, defmt::Format)]
 pub struct TouchPoint {
     pub x: u16,
     pub y: u16,
@@ -35,9 +59,7 @@ pub enum Gesture {
     Unknown(u8),
 }
 
-
-
-/// DETECTED SWIPE GESTURE WITH START/END COORDINATES
+// DETECTED SWIPE GESTURE WITH START/END COORDINATES
 #[derive(Debug, Clone, Copy, defmt::Format)]
 pub struct SwipeEvent {
     pub direction: SwipeDirection,
@@ -54,6 +76,13 @@ pub enum SwipeDirection {
     Left,
     Right,
     Tap,
+}
+
+// REPRESENTS WHETHER A TOUCH POINT IS PRESSED OR RELEASED
+#[derive(Debug, Clone, Copy, defmt::Format)]
+pub enum TouchState {
+    Pressed(TouchPoint),
+    Released,
 }
 
 pub struct Ft3168Touch<I> {
@@ -88,14 +117,42 @@ impl<I: I2c> Ft3168Touch<I> {
         self.i2c.write(FT3168_ADDR, &[reg, val])
     }
 
-    /// INITIALIZE TOUCH CONTROLLER IN MONITOR POWER MODE.
-    pub fn init(&mut self) -> Result<(), I::Error> {
-        // SET POWER MODE TO MONITOR (TRIGGERS ON TOUCH)
-        self.write_reg(REG_POWER_MODE, 0x01)?;
-        Ok(())
+
+    // INITIALIZES THE DEVICE DEFAULTING TO ACTIVE POWER MODE.
+    // NO HARDWARE RESET IS PERFORMED (CALLER MUST HANDLE THAT IF REQUIRED)
+    pub fn initialize(&mut self) -> Result<(), I::Error> {
+        self.write_reg(FT3X68_RD_WR_DEVICE_POWER_MODE, PowerMode::Active as u8)
     }
 
-    /// READ CURRENT TOUCH STATE. RETURNS `None` IF NO TOUCH.
+    // INITIALIZES THE DEVICE WITH A SPECIFIC POWER MODE.
+    pub fn initialize_with_mode(&mut self, mode: PowerMode) -> Result<(), I::Error> {
+        self.write_reg(FT3X68_RD_WR_DEVICE_POWER_MODE, mode as u8)
+    }
+
+    // INITIALIZE TOUCH CONTROLLER IN MONITOR POWER MODE
+    pub fn init(&mut self) -> Result<(), I::Error> {
+        self.write_reg(REG_POWER_MODE, 0x01)
+    }
+
+    // SETS THE POWER MODE OF THE DEVICE
+    pub fn set_power_mode(&mut self, mode: PowerMode) -> Result<(), I::Error> {
+        self.i2c
+            .write(FT3168_ADDR, &[FT3X68_RD_WR_DEVICE_POWER_MODE, mode as u8])
+    }
+
+    // ENABLES OR DISABLES THE PROXIMITY SENSING MODE.
+    pub fn set_proximity_sensing_mode(&mut self, enable: bool) -> Result<(), I::Error> {
+        self.i2c
+            .write(FT3168_ADDR, &[FT3X68_RD_WR_DEVICE_PROXIMITY_SENSING_MODE, enable as u8])
+    }
+
+    // ENABLES OR DISABLES THE GESTURE RECOGNITION MODE.
+    pub fn set_gesture_mode(&mut self, enable: bool) -> Result<(), I::Error> {
+        self.i2c
+            .write(FT3168_ADDR, &[FT3X68_RD_WR_DEVICE_GESTUREID_MODE, enable as u8])
+    }
+
+    // READ CURRENT TOUCH STATE. RETURNS `None` IF NO TOUCH
     pub fn read(&mut self) -> Result<Option<TouchPoint>, I::Error> {
         let fingers = self.read_reg(REG_FINGER_NUM)?;
         if fingers == 0 {
@@ -110,16 +167,12 @@ impl<I: I2c> Ft3168Touch<I> {
         let x = ((x_h & 0x0F) << 8) | x_l;
         let y = ((y_h & 0x0F) << 8) | y_l;
 
-        Ok(Some(TouchPoint {
-            x,
-            y,
-            fingers,
-        }))
+        Ok(Some(TouchPoint { x, y, fingers }))
     }
 
-    /// POLL TOUCH & DETECT SWIPE GESTURES
-    /// RETURNS Some(SwipeEvent) WHEN A FINGER IS LIFTED AFTER MOVEMENT
-    /// RETURNS  CURRENT TOUCH POSITION FOR LIVE TRACKING
+    // POLL TOUCH & DETECT SWIPE GESTURES
+    // RETURNS Some(SwipeEvent) WHEN A FINGER IS LIFTED AFTER MOVEMENT
+    // RETURNS CURRENT TOUCH POSITION FOR LIVE TRACKING
     pub fn poll(&mut self) -> Result<(Option<TouchPoint>, Option<SwipeEvent>), I::Error> {
         let point = self.read()?;
 
@@ -167,24 +220,92 @@ impl<I: I2c> Ft3168Touch<I> {
                         end_y: self.last_y,
                     };
                     Ok((None, Some(event)))
-                } else { Ok((None, None)) }
+                } else {
+                    Ok((None, None))
+                }
             }
         }
     }
 
-    /// READ GESTURE IDs
+    // READ GESTURE ID
     pub fn read_gesture(&mut self) -> Result<Gesture, I::Error> {
-        let id = self.read_reg(REG_GESTURE_ID)?;
-        Ok(match id {
+        let mut buffer = [0u8; 1];
+        self.i2c.write_read(
+            FT3168_ADDR,
+            &[FT3X68_RD_DEVICE_GESTUREID],
+            &mut buffer,
+        )?;
+        Ok(match buffer[0] {
             0x00 => Gesture::None,
-            0x01 => Gesture::SwipeUp,
-            0x02 => Gesture::SwipeDown,
-            0x03 => Gesture::SwipeLeft,
-            0x04 => Gesture::SwipeRight,
-            0x05 => Gesture::SingleTap,
-            0x0B => Gesture::DoubleTap,
-            0x0C => Gesture::LongPress,
+            0x20 => Gesture::SwipeLeft,
+            0x21 => Gesture::SwipeRight,
+            0x22 => Gesture::SwipeUp,
+            0x23 => Gesture::SwipeDown,
+            0x24 => Gesture::DoubleTap,
             other => Gesture::Unknown(other),
         })
+    }
+
+    // READS THE NUMBER OF ACTIVE TOUCH POINTS
+    pub fn finger_number(&mut self) -> Result<u8, I::Error> {
+        let mut buffer = [0u8; 1];
+        self.i2c.write_read(
+            FT3168_ADDR,
+            &[FT3X68_RD_DEVICE_FINGERNUM],
+            &mut buffer,
+        )?;
+        Ok(buffer[0])
+    }
+
+    // READS THE STATE OF THE FIRST TOUCH POINT.
+    pub fn touch1(&mut self) -> Result<TouchState, I::Error> {
+        let fingers = self.finger_number()?;
+        if fingers == 0 {
+            return Ok(TouchState::Released);
+        }
+
+        let mut data = [0u8; 4];
+        self.i2c
+            .write_read(FT3168_ADDR, &[FT3X68_RD_DEVICE_X1POSH], &mut data)?;
+
+        let x = ((data[0] as u16 & 0x0F) << 8) | data[1] as u16;
+        let y = ((data[2] as u16 & 0x0F) << 8) | data[3] as u16;
+
+        Ok(TouchState::Pressed(TouchPoint { x, y, fingers }))
+    }
+
+    // READS THE STATE OF THE SECOND TOUCH POINT.
+    pub fn touch2(&mut self) -> Result<TouchState, I::Error> {
+        let fingers = self.finger_number()?;
+        if fingers < 2 {
+            return Ok(TouchState::Released);
+        }
+
+        let mut data = [0u8; 4];
+        self.i2c
+            .write_read(FT3168_ADDR, &[FT3X68_RD_DEVICE_X2POSH], &mut data)?;
+
+        let x = ((data[0] as u16 & 0x0F) << 8) | data[1] as u16;
+        let y = ((data[2] as u16 & 0x0F) << 8) | data[3] as u16;
+
+        Ok(TouchState::Pressed(TouchPoint { x, y, fingers }))
+    }
+
+    // RETURNS ALL ACTIVE TOUCH POINTS (UP TO 2).
+    pub fn get_touches(&mut self) -> Result<Vec<TouchPoint, 2>, I::Error> {
+        let mut touches: Vec<TouchPoint, 2> = Vec::new();
+        let fingers = self.finger_number()?;
+
+        if fingers >= 1 {
+            if let TouchState::Pressed(point) = self.touch1()? {
+                touches.push(point).ok();
+            }
+        }
+        if fingers >= 2 {
+            if let TouchState::Pressed(point) = self.touch2()? {
+                touches.push(point).ok();
+            }
+        }
+        Ok(touches)
     }
 }
