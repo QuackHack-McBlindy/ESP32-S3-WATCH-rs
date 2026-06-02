@@ -299,7 +299,7 @@ async fn display_task(
             }
 
             // INFO PAGE (SETTINGS) SCROLL ANIMATION
-            if crate::load!(crate::gui::pages::CURRENT_PAGE) == 149 {
+            if crate::load!(crate::gui::pages::CURRENT_PAGE) == 151 {
                 crate::gui::options::info::animate_info(60);
                 if critical_section::with(|cs| {
                     let scroll = crate::gui::options::info::INFO_SCROLL.borrow_ref(cs);
@@ -700,7 +700,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     crate::store!(crate::state::WIFI_STATE, true);
     // LET IT CONNECT PROPERLY BEFORE CONTINUING
     // WILL TRY TO CONNECT 3 TIMES BEFORE MOVING ON TO THE NEXT CONFIGURED SSID (ENV VARS)
-    crate::delay_s!(8);
+    crate::delay_s!(5);
     defmt::info!("IP: {:08x}", crate::load!(crate::state::CURRENT_IP));
 
     // SYNC REAL TIME CLOCK (RTC) TO NETWORK TIME PROTOCOL POOL (NTP)

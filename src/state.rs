@@ -34,14 +34,15 @@ crate::init_bool!(API_STATE, false);
 
 
 // WIFI - COMPILE-TIME ENVIRONMENT VARIABLES
-pub const SSID: &str = env!("WIFI_SSID3");
-pub const PASSWORD: &str = env!("WIFI_PASSWORD3");
+pub const SSID: &str = env!("WIFI_SSID");
+pub const PASSWORD: &str = env!("WIFI_PASSWORD");
 
 // OPTIONAL MORE WIFI
 // ADD AS MANY AS NEEDED
 pub const WIFI_CREDENTIALS: &[(&str, &str)] = &[
     (SSID, PASSWORD),
-    (env!("WIFI_SSID"), env!("WIFI_PASSWORD")),
+    (env!("WIFI_SSID2"), env!("WIFI_PASSWORD2")),
+    (env!("WIFI_SSID3"), env!("WIFI_PASSWORD3")),
 ];
 
 

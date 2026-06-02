@@ -78,8 +78,13 @@ Turn up volume & hit play.
 
 #### **Pictures**
 
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/clock.jpeg">
-  <img src="resource/demo/clock.jpeg" alt="Clock" width="148">
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/homescreen1.jpeg">
+  <img src="resource/demo/homescreen1.jpeg" alt="Homescreen" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/control_center.jpeg">
+  <img src="resource/demo/control_center.jpeg" alt="Control Center" width="148">
 </a>
 
 <a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/battery.jpeg">
@@ -98,13 +103,98 @@ Turn up volume & hit play.
   <img src="resource/demo/qwackify.jpeg" alt="Media Player -Qwackify" width="148">
 </a>
 
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings.jpeg">
-  <img src="resource/demo/settings.jpeg" alt="Settings page" width="148">
-</a>
 
 <a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/calling.jpeg">
   <img src="resource/demo/calling.jpeg" alt="Dad is calling" width="148">
 </a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings_info_3.jpeg">
+  <img src="resource/demo/settings_info_3.jpeg" alt="Settings Info 3" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings_info_2.jpeg">
+  <img src="resource/demo/settings_info_2.jpeg" alt="Settings Info 2" width="148">
+</a> <br>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings_info_1.jpeg">
+  <img src="resource/demo/settings_info_1.jpeg" alt="Settings Info 1" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings_info_0.jpeg">
+  <img src="resource/demo/settings_info_0.jpeg" alt="Settings Info 0" width="148">
+</a> <br>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings11.jpeg">
+  <img src="resource/demo/settings11.jpeg" alt="Settings 11" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/IMG_2918.jpeg">
+  <img src="resource/demo/IMG_2918.jpeg" alt="IMG 2918" width="148">
+</a> <br>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/IMG_2916.jpeg">
+  <img src="resource/demo/IMG_2916.jpeg" alt="IMG 2916" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/tinyweather.jpeg">
+  <img src="resource/demo/tinyweather.jpeg" alt="Tiny Weather" width="148">
+</a> <br>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settomgs7.jpeg">
+  <img src="resource/demo/settomgs7.jpeg" alt="Settings 7" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings8.jpeg">
+  <img src="resource/demo/settings8.jpeg" alt="Settings 8" width="148">
+</a> <br>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings6.jpeg">
+  <img src="resource/demo/settings6.jpeg" alt="Settings 6" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings5.jpeg">
+  <img src="resource/demo/settings5.jpeg" alt="Settings 5" width="148">
+</a> <br>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings3.jpeg">
+  <img src="resource/demo/settings3.jpeg" alt="Settings 3" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings2.jpeg">
+  <img src="resource/demo/settings2.jpeg" alt="Settings 2" width="148">
+</a> <br>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings1.jpeg">
+  <img src="resource/demo/settings1.jpeg" alt="Settings 1" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings0.jpeg">
+  <img src="resource/demo/settings0.jpeg" alt="Settings 0" width="148">
+</a> <br>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/setteings4.jpeg">
+  <img src="resource/demo/setteings4.jpeg" alt="Settings 4" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/media_player.jpeg">
+  <img src="resource/demo/media_player.jpeg" alt="Media Player" width="148">
+</a> <br>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/launcher4.jpeg">
+  <img src="resource/demo/launcher4.jpeg" alt="Launcher 4" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/launcher3.jpeg">
+  <img src="resource/demo/launcher3.jpeg" alt="Launcher 3" width="148">
+</a> <br>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/launcher2.jpeg">
+  <img src="resource/demo/launcher2.jpeg" alt="Launcher 2" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/launcher1.jpeg">
+  <img src="resource/demo/launcher1.jpeg" alt="Launcher 1" width="148">
+</a> <br>
 
 
   
@@ -144,32 +234,11 @@ I also prefer to have some of the extensive code as library crates, it can be us
 ```
 📂 ESP32-S3-WATCH-rs
 ├── 📂 applications
-│   ├── 📄 media_player.rs
-│   ├── 📄 house.rs
-│   └── 📄 mod.rs
 ├── 📂 base
 │   ├── 📂 routes
 │   │   └── 📂 ... 
 │   │       └── 📂 ... 
-│   ├── 📄 assets.rs
-│   ├── 📄 api.rs
-│   ├── 📄 bluetooth.rs
-│   ├── 📄 macros.rs
-│   ├── 📄 uptime.rs
-│   ├── 📄 wifi.rs
-│   └── 📄 mod.rs
 ├── 📂 components
-│   ├── 📄 axp2101.rs
-│   ├── 📄 buttons.rs
-│   ├── 📄 co5300.rs
-│   ├── 📄 frequency.rs
-│   ├── 📄 framebuffer.rs
-│   ├── 📄 ft3168.rs
-│   ├── 📄 pcf85063a.rs
-│   ├── 📄 qmi8658.rs
-│   ├── 📄 qspi_bus.rs
-│   ├── 📄 storage.rs
-│   └── 📄 mod.rs
 ├── 📂 crates
 │   ├── 📂 barely-fuzzy
 │   ├── 📂 embedded-png
@@ -178,18 +247,6 @@ I also prefer to have some of the extensive code as library crates, it can be us
 │   ├── 📂 tinyapi
 │   └── 📂 yo-esp
 ├── 📂 gui
-│   ├── 📄 animations.rs
-│   ├── 📄 apps.rs
-│   ├── 📄 battery.rs
-│   ├── 📄 call.rs
-│   ├── 📄 colors.rs
-│   ├── 📄 house.rs
-│   ├── 📄 media_player.rs
-│   ├── 📄 pages.rs
-│   ├── 📄 settings.rs
-│   ├── 📄 text.rs
-│   ├── 📄 time.rs
-│   └── 📄 mod.rs
 ├── 📄 main.rs
 └── 📄 state.rs
 ```

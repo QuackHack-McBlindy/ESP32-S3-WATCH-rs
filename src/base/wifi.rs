@@ -157,7 +157,7 @@ pub async fn connection(mut controller: esp_radio::wifi::WifiController<'static>
                 defmt::info!("🛜 ❌ - CONNECTION FAILED for {}: {:?}", ssid, e);
                 fail_count += 1;
 
-                if fail_count >= 3 {
+                if fail_count >= 2 {
                     defmt::info!(
                         "WiFi - Switching to next credentials ({} failures)",
                         fail_count
