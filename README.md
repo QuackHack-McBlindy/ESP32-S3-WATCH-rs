@@ -102,9 +102,6 @@ Turn up volume & hit play.
 
 **Launcher - accessed far left at homescreen (in launcher swipe up/down)**  
 
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/launcher.jpeg">
-  <img src="resource/demo/launcher.jpeg" alt="Launcher" width="148">
-</a>
 
 <a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/launcher1.jpeg">
   <img src="resource/demo/launcher1.jpeg" alt="Launcher 1" width="148">
@@ -128,9 +125,6 @@ Turn up volume & hit play.
   <img src="resource/demo/media_player.jpeg" alt="Media Player" width="148">
 </a> 
 
-<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/qwackify.jpeg">
-  <img src="resource/demo/qwackify.jpeg" alt="Media Player -Qwackify" width="148">
-</a>
 
 <a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/calling.jpeg">
   <img src="resource/demo/calling.jpeg" alt="Dad is calling" width="148">
