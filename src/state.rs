@@ -55,6 +55,11 @@ pub const BACKEND_TCP_PORT_STR: &str = env!("BACKEND_TCP_PORT");
 
 
 // ───────────────────────────────────────────────────────────────────────
+// CPU RELATED
+crate::init_u16!(CPU_FREQ, 240);
+
+
+// ───────────────────────────────────────────────────────────────────────
 // DISPLAY RELATED
 pub const LCD_SDIO0: u8 = 4;
 pub const LCD_SDIO1: u8 = 5;

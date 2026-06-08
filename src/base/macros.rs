@@ -2,6 +2,13 @@
 // SIMPLE SHORTHAND HELPERS
 
 
+//unsafe fn flush_cache() {
+//    unsafe extern "C" {
+//        fn Cache_Invalidate_DCache_All();
+//    }
+//    unsafe { Cache_Invalidate_DCache_All() };
+//}
+
 // ───────────────────────────────────────────────────────────────────────
 // DISPLAY RELATED
 

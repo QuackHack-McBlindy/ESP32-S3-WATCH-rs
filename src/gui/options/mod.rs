@@ -1,5 +1,6 @@
 // GUI/OPTIONS/MOD
 
+pub mod cpu;
 pub mod wifi;
 pub mod rssi;
 pub mod bluetooth;

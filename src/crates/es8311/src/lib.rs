@@ -101,6 +101,33 @@ const CHVER_REGFF: u8 = 0xFF;
 // Public types & enums
 // ---------------------------------------------------------------------------
 
+
+/// Power mode of the codec.
+///
+/// Used with [`Es8311::set_power_mode`] to switch between normal operation,
+/// low‑power active mode, and deep standby.
+///
+/// # Variants
+///
+/// * `Normal` – Standard performance, full audio quality.  
+///   This is the mode after a successful [`init`].
+///
+/// * `LowPower` – Reduced power consumption while staying fully operational.  
+///   Audio performance (SNR, THD) may be slightly lower than `Normal`.
+///   To return to standard quality, switch back to `Normal` or call [`init`].
+///
+/// * `Standby` – All analogue and digital blocks powered down.  
+///   Total current draw is typically **0 µA**.  
+///   After entering `Standby` you can (and should) stop the
+///   external MCLK, LRCK and SCLK clocks to save additional system power.  
+///   To wake the codec, restore the clocks and call [`init`] again.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PowerMode {
+    Standby,
+    LowPower,
+    Normal,
+}
+
 /// Audio sample resolution (bit width).
 ///
 /// Used for both ADC (SDP In) and DAC (SDP Out) serial ports.
@@ -605,7 +632,92 @@ impl Es8311 {
         reg15 |= (fade as u8) << 4;
         self.write_reg(i2c, ADC_REG15, reg15)
     }
+
+    /// Switch the codec between normal operation, low‑power active mode,
+    /// and deep standby.
+    ///
+    /// This is the preferred way to manage power. You can also call
+    /// [`standby`](Self::standby) or [`set_low_power_active`](Self::set_low_power_active)
+    /// directly if you prefer.
+    ///
+    /// * `Normal` – restores standard performance (clears low‑power bits).
+    ///   Must only be called when the codec is already out of standby
+    ///   (i.e. after [`init`]).
+    /// * `LowPower` – enables low‑power analogue and digital operation
+    ///   (see [`set_low_power_active`] for details).
+    /// * `Standby` – performs a full power‑down sequence for ~0 µA consumption.
+    ///
+    /// # Errors
+    /// Returns [`Error::I2c`] if any I²C write fails.
+    pub fn set_power_mode<I2C, E>(&self, i2c: &mut I2C, mode: PowerMode) -> Result<(), Error<E>>
+    where I2C: I2c<Error = E>,
+    {
+        match mode {
+            PowerMode::Standby => self.standby(i2c),
+            PowerMode::LowPower => self.set_low_power_active(i2c),
+            PowerMode::Normal => self.write_reg(i2c, SYSTEM_REG0F, 0x00),
+        }
+    }
+    
+    /// Put the codec into standby (power‑down) mode.
+    ///
+    /// This writes the recommended power‑down sequence as described in
+    /// the ES8311 user guide:
+    ///
+    /// - Sets all digital reset bits and stops the internal state machine
+    ///   (register `0x00` = `0x1F`).
+    /// - Powers down all analogue blocks – references, bias, ADC, DAC, etc.
+    ///   (register `0x0D` = `0xFF`).
+    ///
+    /// After calling this, the codec consumes about **0 µA**.
+    /// You can then stop the external MCLK, LRCK, and SCLK clocks
+    /// from your MCU to save even more system power.
+    ///
+    /// To wake up the codec, restore the clocks and call [`init`]
+    /// again.
+    ///
+    /// # Errors
+    /// Returns [`Error::I2c`] if the I²C write fails.
+    pub fn standby<I2C, E>(&self, i2c: &mut I2C) -> Result<(), Error<E>>
+    where
+        I2C: I2c<Error = E>,
+    {
+        // 1. Digital reset + state machine off (user guide, section 9.1)
+        //    CSM_ON = 0, all reset bits = 1
+        self.write_reg(i2c, RESET_REG00, 0x1F)?;
+
+        // 2. Power down all analogue blocks (user guide, section 9.2)
+        //    PDN_ANA=1, PDN_IBIASGEN=1, PDN_ADCBIASGEN=1,
+        //    PDN_ADCVERFGEN=1, PDN_DACVREFGEN=1, PDN_VREF=1,
+        //    VMIDSEL=00 (power down)
+        self.write_reg(i2c, SYSTEM_REG0D, 0xFF)?;
+
+        Ok(())
+    }
+    
+    /// Enable low‑power active mode.
+    ///
+    /// Writes `0xFF` to register `0x0F` (LOW_POWER_CONTROL), putting the
+    /// DAC, PGA, ADC, and reference circuits into their low‑power state.
+    ///
+    /// The codec remains fully functional but audio performance
+    /// (SNR, THD+N) may be slightly reduced compared to `Normal`.
+    ///
+    /// To return to standard performance, call
+    /// [`set_power_mode`](Self::set_power_mode) with `PowerMode::Normal`,
+    /// or perform a full re‑initialisation with [`init`].
+    ///
+    /// # Errors
+    /// Returns [`Error::I2c`] if the I²C write fails.
+    pub fn set_low_power_active<I2C, E>(&self, i2c: &mut I2C) -> Result<(), Error<E>>
+    where
+        I2C: I2c<Error = E>,
+    {
+        self.write_reg(i2c, SYSTEM_REG0F, 0xFF)?;
+        Ok(())
+    }
 }
+
 
 // ---------------------------------------------------------------------------
 // Clock coefficient table (lookup for MCLK / sample rate pairs)

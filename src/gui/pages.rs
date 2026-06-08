@@ -60,7 +60,8 @@ pub enum Page {
     SettingsDisplay = 148,
     SettingsTimeout = 149,
     SettingsAmp     = 150,
-    SettingsInfo    = 151,
+    SettingsCpu     = 151,    
+    SettingsInfo    = 152,
     // SPECIAL PAGES
     Call        = 100,
     Text        = 101,
@@ -112,7 +113,8 @@ impl Page {
             148 => Some(Page::SettingsDisplay),
             149 => Some(Page::SettingsTimeout),
             150 => Some(Page::SettingsAmp),
-            151 => Some(Page::SettingsInfo),
+            151 => Some(Page::SettingsCpu),            
+            152 => Some(Page::SettingsInfo),
             _   => None,
         }
     }
@@ -140,6 +142,7 @@ impl Page {
                 | Page::SettingsDisplay
                 | Page::SettingsTimeout
                 | Page::SettingsAmp
+                | Page::SettingsCpu                
                 | Page::SettingsInfo
         )
     }
@@ -159,6 +162,7 @@ impl Page {
                 | Page::SettingsDisplay
                 | Page::SettingsTimeout
                 | Page::SettingsAmp
+                | Page::SettingsCpu
                 | Page::SettingsInfo
         )
     }
@@ -176,7 +180,8 @@ impl Page {
             Page::SettingsMic       => Page::SettingsDisplay,
             Page::SettingsDisplay   => Page::SettingsTimeout,
             Page::SettingsTimeout   => Page::SettingsAmp,
-            Page::SettingsAmp       => Page::SettingsInfo,            
+            Page::SettingsAmp       => Page::SettingsCpu,
+            Page::SettingsCpu       => Page::SettingsInfo,
             Page::SettingsInfo      => Page::SettingsWifi,
             _                       => Page::Clock,
         }
@@ -195,7 +200,8 @@ impl Page {
             Page::SettingsDisplay   => Page::SettingsMic,
             Page::SettingsTimeout   => Page::SettingsDisplay,
             Page::SettingsAmp       => Page::SettingsTimeout,
-            Page::SettingsInfo      => Page::SettingsAmp,            
+            Page::SettingsCpu       => Page::SettingsAmp,
+            Page::SettingsInfo      => Page::SettingsCpu,
             _                       => Page::Clock,
         }
     }
@@ -525,6 +531,7 @@ fn handle_settings_swipe(
         Page::SettingsSpeaker => crate::gui::options::speaker::handle_swipe(direction, start_x, start_y, last_x, last_y),
         Page::SettingsMic     => crate::gui::options::mic::handle_swipe(direction, start_x, start_y, last_x, last_y),
         Page::SettingsDisplay => crate::gui::options::display::handle_swipe(direction, start_x, start_y, last_x, last_y),
+        Page::SettingsCpu     => crate::gui::options::cpu::handle_swipe(direction, start_x, start_y, last_x, last_y),        
         _ => {}
     }
 }

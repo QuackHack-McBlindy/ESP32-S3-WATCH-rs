@@ -6,3 +6,4 @@ pub mod mic;
 pub mod speaker;
 pub mod voice;
 pub mod wifi;
+pub mod cpu;

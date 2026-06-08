@@ -79,6 +79,14 @@ pub async fn init_routes() {
 
 
     // ───────────────────────────────────────────────────────────────────────
+    // /API/SETTINGS/CPU (GET)
+    
+    // SET CPU FREQUENCY (80, 160, 240)
+    tinyapi::register_async_route("/api/settings/cpu/{value}", crate::base::routes::api::settings::cpu::set::cpu_handler).await;
+    
+
+
+    // ───────────────────────────────────────────────────────────────────────
     // /API/SETTINGS/MIC (GET)
     
     // VOLUME    
@@ -106,6 +114,9 @@ pub async fn init_routes() {
 
     // STREAM (on/off)
     tinyapi::register_async_route("/api/settings/speaker/stream/{value}", crate::base::routes::api::settings::speaker::stream::stream_handler).await;  
+
+    // DING (PLAYS SOUND)
+    tinyapi::register_async_route("/api/settings/speaker/play/ding", crate::base::routes::api::settings::speaker::ding::ding_handler).await;  
 
 
     // ───────────────────────────────────────────────────────────────────────

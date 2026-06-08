@@ -5,3 +5,4 @@ pub mod mute;
 pub mod amp;
 pub mod toggle;
 pub mod stream;
+pub mod ding;

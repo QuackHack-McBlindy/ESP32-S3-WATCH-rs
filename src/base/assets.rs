@@ -66,6 +66,11 @@ pub const SETTINGS_CAST_PNG: &[u8] = include_bytes!(concat!(
     "/assets/apps/settings/cast.png"
 ));
 
+pub const SETTINGS_CPU_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/cpu.png"
+));
+
 pub const SETTINGS_DISPLAY_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/apps/settings/display.png"

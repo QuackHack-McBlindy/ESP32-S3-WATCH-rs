@@ -10,13 +10,16 @@
 
 #![no_std]
 #![no_main]
-// NOBODY TELLS ME WHAT TO DO!
-#![allow(non_snake_case)]
-#![allow(dead_code)]
-#![allow(unused)]
-#![allow(private_interfaces)]
-#![deny(clippy::mem_forget)]
-#![deny(clippy::large_stack_frames)]
+
+#![allow(
+    non_snake_case,
+    dead_code,
+    unused,
+    private_interfaces,
+    clippy::large_stack_frames,
+    reason = "NOBODY TELLS ME WHAT TO DO!"
+)]
+
 
 // IMPORT
 use esp_println as _;
@@ -139,7 +142,6 @@ async fn display_task(
         // SCREEN ON – START RENDERING LOOP
         display.display_on();
         crate::store!(crate::state::DISPLAY_STATE, true);
-        defmt::info!("🖥️  ☑️");
 
         // STATE VARIABLES 
         // LOW DEFAULT BRIGHTNESS (35%) DON'T HURT 🦆 BLIND EYES & SAVES BATTERY 
@@ -255,7 +257,8 @@ async fn display_task(
                                 148 => crate::gui::options::display::draw(&mut fb),
                                 149 => crate::gui::options::timeout::draw(&mut fb),
                                 150 => crate::gui::options::amplifier::draw(&mut fb),
-                                151 => crate::gui::options::info::draw(&mut fb),
+                                151 => crate::gui::options::cpu::draw(&mut fb),
+                                152 => crate::gui::options::info::draw(&mut fb),
                                 // MISC PAGES (CALLED BY API WHEN THEY'RE WANTED)
                                 100 => crate::gui::call::draw(&mut fb),
                                 101 => crate::gui::text::draw(&mut fb),
@@ -346,17 +349,70 @@ async fn display_task(
 pub fn set_speaker_volume(volume: u8) {
     let volume = volume.min(100);
     crate::store!(crate::state::SPEAKER_VOLUME, volume);
-    critical_section::with(|cs| {
-        let mut bus = crate::I2C_BUS.borrow_ref_mut(cs);
-        let mut codec = crate::ES8311.borrow_ref_mut(cs);
+    let was_muted = crate::load!(crate::state::SPEAKER_MUTED);
 
-        if let (Some(i2c), Some(es8311)) = (bus.as_mut(), codec.as_mut()) {
-            if volume == 0 { // MIGHT AS WELL MUTE THE ES8311 CODEC HERE - SAVES US A FEW mV
-                defmt::info!("🔇 Speaker MUTED!");
-            } else { defmt::info!("🔊 Volume {}%", volume); }
-            let _ = es8311.volume_set(i2c, volume, None);
+    if volume == 0 {
+        // MIGHT AS WELL MUTE THE ES8311 CODEC HERE - POWER SAVER!
+        critical_section::with(|cs| {
+            let mut bus = crate::I2C_BUS.borrow_ref_mut(cs);
+            let mut codec = crate::ES8311.borrow_ref_mut(cs);
+            if let (Some(i2c), Some(es8311)) = (bus.as_mut(), codec.as_mut()) {
+                let _ = es8311.mute(i2c, true);
+                // AND SET CODEC TO FULL STANDBY (~0 µA)
+                let _ = es8311.set_power_mode(i2c, es8311::PowerMode::Standby);
+            }
+        });
+        // WE DON'T NEED AMPLIFIER ON IF WE ARE NOT OUPUTTING SOUND
+        amp_off();
+        defmt::info!("🔇 Speaker MUTED!");
+        crate::store!(crate::state::SPEAKER_MUTED, true);
+    } else { // ABOVE ZERO
+        if was_muted { // CHECK IF LAST STATE WAS MUTE 
+            // WAKE UP FROM STANDBY IF PREVIOUSLY MUTED 
+            critical_section::with(|cs| {
+                let mut bus = crate::I2C_BUS.borrow_ref_mut(cs);
+                let mut codec = crate::ES8311.borrow_ref_mut(cs);
+                if let (Some(i2c), Some(es8311)) = (bus.as_mut(), codec.as_mut()) {
+                    // REBUILD CODEC CONFIG
+                    let mclk_freq = crate::state::I2S_SAMPLE_RATE * 256;  // mclk_ratio = 256, as in main
+                    let clock_cfg = es8311::ClockConfig {
+                        mclk_inverted: false,
+                        sclk_inverted: false,
+                        mclk_from_mclk_pin: true,
+                        mclk_frequency: mclk_freq,
+                        sample_frequency: crate::state::I2S_SAMPLE_RATE,
+                    };
+                    let resolution = match crate::state::I2S_BIT_WIDTH {
+                        16 => es8311::Resolution::Bits16,
+                        24 => es8311::Resolution::Bits24,
+                        32 => es8311::Resolution::Bits32,
+                        _ => es8311::Resolution::Bits16,
+                    };
+                    let mut delay = esp_hal::delay::Delay::new();
+                    // RE-INIT CODEC
+                    if let Err(e) = es8311.init(i2c, &clock_cfg, resolution, resolution, &mut delay) {
+                        defmt::error!("ES8311 wake‑up failed: {:?}", defmt::Debug2Format(&e));
+                        return;
+                    }
+                    // UNMUTE
+                    let _ = es8311.mute(i2c, false);
+                }
+            });
+            // TURN ON AMPLIFIER AFTER CODEC IS READY
+            amp_on();
+            crate::store!(crate::state::SPEAKER_MUTED, false);
         }
-    });
+
+        // SET NEW VOLUME
+        critical_section::with(|cs| {
+            let mut bus = crate::I2C_BUS.borrow_ref_mut(cs);
+            let mut codec = crate::ES8311.borrow_ref_mut(cs);
+            if let (Some(i2c), Some(es8311)) = (bus.as_mut(), codec.as_mut()) {
+                let _ = es8311.volume_set(i2c, volume, None);
+            }
+        });
+        defmt::info!("🔊 Volume {}%", volume);
+    }
 }
 
 // ───────────────────────────────────────────────────────────────────────

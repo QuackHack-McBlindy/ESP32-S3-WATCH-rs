@@ -182,6 +182,10 @@ Turn up volume & hit play.
   <img src="resource/demo/IMG_2918.jpeg" alt="IMG 2918" width="148">
 </a>
 
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings10.jpeg">
+  <img src="resource/demo/settings10.jpeg" alt="Settings 10" width="148">
+</a>
+
 <a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings11.jpeg">
   <img src="resource/demo/settings11.jpeg" alt="Settings 11" width="148">
 </a> <br>
@@ -434,12 +438,14 @@ curl http://<ESP_IP>/api/settings/display/brightness/75
 | `/api/media/search/songs/{song}` | Fuzzy search & play MP3 files from SD card. Returns matching song names and starts playback |
 | `/api/settings/api/off` | Stops the internal API (including webserver). **Note: use GUI to turn back on** |
 | `/api/settings/bluetooth/{value}` | Set bluetooth state (on/off). |
+| `/api/settings/cpu/{value}` | Set CPU frequency (80, 160, 240). |
 | `/api/settings/mic/volume/{value}` | Set microphone gain (0–100%). `{value}` as integer percent |
 | `/api/settings/mic/mute/{value}` | Mute/unmute mic: `1`/`on`/`mute`, `0`/`off`/`unmute`, or `toggle` |
 | `/api/settings/speaker/{value}` | Toggle speaker task on/off |
 | `/api/settings/speaker/stream/{value}` | Toggle speaker streaming task on/off |
-| `/api/settings/speaker/volume/{value}` | Set speaker volume (0–100%) |
+| `/api/settings/speaker/volume/{value}` | Set speaker volume (0–100%). Will automatically handle mute/unmute & toggle power saving mode on ES8311 + toggle amplifier state when setting zero volume. |
 | `/api/settings/speaker/mute/{value}` | Mute/unmute speaker: same options as mic mute |
+| `/api/settings/speaker/play/ding` | Play ding sound on speaker. Useful for testing purpose. |
 | `/api/settings/voice/{value}` | GET | Enable/disable/toggle the entire voice pipeline. |
 | `/api/settings/voice/wakeword/{value}` | GET | Enable/disable wake‑word streaming (`on`, `off`, `enable`, `disable`) |
 | `/api/settings/display/brightness/{value}` | Set backlight brightness (0–100%). `{value}` as integer percent |
