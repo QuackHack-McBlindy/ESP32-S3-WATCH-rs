@@ -20,6 +20,49 @@ pub const ROBOTO_REGULAR: &[u8] = include_bytes!(concat!(
 // ───────────────────────────────────────────────────────────────────────
 // PNG IMAGES
 
+// WEATHER ICONS
+pub const SUNNY_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/tinyweather/snow.png"
+));
+
+pub const PARTLY_CLOUDY_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/tinyweather/snow.png"
+));
+
+pub const CLOUDY_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/tinyweather/snow.png"
+));
+
+pub const RAIN_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/tinyweather/snow.png"
+));
+
+pub const THUNDERSTORM_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/tinyweather/snow.png"
+));
+
+pub const SLEET_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/tinyweather/snow.png"
+));
+
+pub const FOG_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/tinyweather/snow.png"
+));
+
+pub const SNOW_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/tinyweather/snow.png"
+));
+
+
+
 // SETTINGS ICONS
 pub const SETTINGS_ALERT_TRIANGLE_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),

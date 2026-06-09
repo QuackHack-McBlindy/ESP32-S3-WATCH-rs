@@ -307,6 +307,7 @@ async fn handle_page_tap(page: Page, x: u16, y: u16) {
                 crate::gui::TouchAction::ControlCenterBox4 => {                    
                     defmt::info!("CONTROL CENTER BOX4 PRESSED (SETTINGS)");
                     crate::store!(CURRENT_PAGE, 140);
+                    crate::gui::control_center::close();
                 }                    
                 _ => {}
             }
@@ -314,6 +315,11 @@ async fn handle_page_tap(page: Page, x: u16, y: u16) {
         return;
     }
     match page {
+        // ───────────────────────────────────────────────────────────────────────
+        // WEATHER PAGE
+        Page::Weather => {
+            crate::gui::weather::handle_touch(x as i32, y as i32);
+        }
         // ───────────────────────────────────────────────────────────────────────
         // SETTOMGS PAGE
         Page::Settings => {

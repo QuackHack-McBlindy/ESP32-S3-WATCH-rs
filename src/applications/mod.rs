@@ -7,6 +7,7 @@ pub mod duck_tv;
 pub mod duckcloud;
 pub mod settings;
 pub mod house;
+pub mod tinyweather;
 
 
 // ───────────────────────────────────────────────────────────────────────
@@ -27,4 +28,5 @@ pub static APPS: &[AppDescriptor] = &[
     house::APP_DESCRIPTOR,
     duckcloud::APP_DESCRIPTOR,
     settings::APP_DESCRIPTOR,
+    tinyweather::APP_DESCRIPTOR,
 ];    

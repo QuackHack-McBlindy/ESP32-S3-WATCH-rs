@@ -458,22 +458,30 @@ pub fn amp_off() {
     crate::store!(crate::state::AMPLIFIER_STATE, false);
 }
 
+// ───────────────────────────────────────────────────────────────────────
+// PUB FUNCTION TO FETCH NEW WEATHER DATA
+pub async fn update_weather(stack: &embassy_net::Stack<'_>) {
+    crate::applications::tinyweather::get_current_weather(*stack).await;
+    crate::dirty!();
+}
+
 
 // ───────────────────────────────────────────────────────────────────────
 // MAIN
 #[allow(clippy::large_stack_frames)]
 #[esp_rtos::main]
 async fn main(spawner: embassy_executor::Spawner) -> ! {
-    // WE CAN CONTROL CLOCKS AT RUNTIME LATER
+    // WE CAN (AND WILL) CONTROL CLOCK SPEED LATER (ALSO AVAILABLE VIA GUI)
     let config = esp_hal::Config::default().with_cpu_clock(esp_hal::clock::CpuClock::max());
     let peripherals = esp_hal::init(config);
+
 
     // ALLOCATE PSRAM
     esp_alloc::psram_allocator!(peripherals.PSRAM, esp_hal::psram);
     // HEAP ALLOC
     esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 73744);
 
-    // TTF PARSING IS HEAVY? - LET'S CACHE THE FONT WE'LL USE. 
+    // TTF PARSING IS HEAVY? - LET'S CACHE THE FONT WE'LL USE ANYWAY. 
     critical_section::with(|_| unsafe {
         crate::gui::ROBOTO_BOLD_FONT =
             Some(rusttype::Font::try_from_bytes(crate::base::assets::ROBOTO_BOLD).unwrap());
@@ -748,6 +756,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     // ───────────────────────────────────────────────────────────────────────
     // SETUP WIFI (ON LOW-POWER MODE)
     let backend_port: u16 = crate::state::BACKEND_TCP_PORT_STR.parse().expect("Invalid BACKEND_TCP_PORT");
+    
     let stack = base::wifi::init(&spawner, peripherals.WIFI, backend_port).await;
     
     // WIFI CONFIGURED TO SIT IDLE AND AWAIT START/STOP COMMANDS
@@ -766,6 +775,11 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
         Ok(()) => defmt::info!("PCF85063A Successful synchronization"),
         Err(e) => defmt::warn!("NTP sync failed: {}", e),
     }
+
+
+    // FETCH WEATHER FORECAST
+    crate::delay_s!(1);
+    crate::update_weather(&stack).await;
 
 
     // ───────────────────────────────────────────────────────────────────────
@@ -882,8 +896,15 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
 
     // HAVING AMPPLIFIER ON WHEN NOT USED IS NOT BEST PRACTICE & BURNS BATTERY!
     // WE TURN IT BACK ON AGAIN ONLY WHEN AUDIO WILL BE PLAYED
-    crate::amp_off();
-  
+    // (THIS PUTS ES8311 IN SLEEP MODE + POWER DOWN AMP)
+    crate::set_speaker_volume(0);
+
+
+    // SLOW DOWN CPU FREQUENCY - WE DONE HERE & MIGHT NOT NEED ALL 240 MHz  
+    crate::components::frequency::set_cpu_mhz(160);
+    crate::store!(crate::state::CPU_FREQ, 160);
+
+    
       
     // MAIN LOOP
     loop { // CALCULATE TIME SINCE BOOT

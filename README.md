@@ -290,7 +290,8 @@ Extend with more crazy ideas as they pop up. `ESP32-S3-WATCH-rs` is still under 
 - [ ] Draw graphs on watch from input data 
 - [ ] Generate on-device QR codes. (need TLS for secure secret sharing via QR)
 - [x] Broadcasting all text-to-speech to every ESP32 device.   
-- [ ] tinyWeather app - (GeoByIP, one icon - no token)
+- [x] tinyWeather app - tap weather page to cycle displayed day (3-day forecast)
+- [x] Change CPU frequency at runtime/from GUI
 - [ ] Phone calls/text message (Bluetooth HandsFree Protocol)
 - [ ] Remember settings changes between boots/firmware updates
 - [x] Backend: `yo`
@@ -424,6 +425,7 @@ curl http://<ESP_IP>/api/settings/display/brightness/75
 | `/api/download/file/music/{file}` | Download a song from the SD cards `/Music` directory |
 | `/api/sensor/{value}` | Read a single sensor/system value (see supported keys below) |
 | `/api/sensors` | Returns all sensor/system values as JSON |
+| `/api/weather/refresh` | Refresh tinyWeater data. |
 | `/api/media/play` | Sends `play` command to the media player. Starts the playback |
 | `/api/media/pause` | Sends `pause` command to the media player. Pauses the playback |
 | `/api/media/prev` | Sends `previous` command to the media player. Plays previous track |
@@ -831,7 +833,7 @@ All the embassy-executor tasks can also be started/paused from this application.
   
 **House** - Smart Home application with some quick action buttons etc, most of the home control is done by voice anyway.  
 
-**tinyWeather** - More of a widget than an app really. Displays the current temperature and an icon representing current weather state on the display. Only updates when manually clicked.
+**tinyWeather** - More of a widget than an app really. Displays the current temperature and an icon representing the weather state on the display. Tapping anywhere on the weather page will cycle between current weather and a three day forecast.  
   
 Will extend with more applications as I think of any useful ones.  
 
