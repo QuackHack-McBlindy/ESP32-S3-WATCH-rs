@@ -8,7 +8,6 @@ pub mod apps;
 pub mod control_center;
 pub mod time;
 pub mod battery;
-pub mod house;
 pub mod media_player; // QWACKIFY
 pub mod duck_tv;
 pub mod duckcloud;
@@ -17,6 +16,7 @@ pub mod text;
 pub mod settings;
 pub mod options;
 pub mod weather;
+pub mod input;
 
 
 // ───────────────────────────────────────────────────────────────────────
@@ -63,9 +63,13 @@ pub struct HitArea {
     pub action: TouchAction,
 }
 
+
 #[derive(Clone, Copy, PartialEq, defmt::Format)]
 pub enum TouchAction {
     None,
+    // APP CENTER QUICK ACTIONS
+    AppCenterApp(usize),
+    AppLaunch(usize),
     // CONTROL CENTER QUICK ACTIONS
     ControlCenterBox1,
     ControlCenterBox2,
@@ -80,6 +84,9 @@ pub enum TouchAction {
     // CALL PAGE
     CallAccept,
     CallDecline,
+    // TEXT INPUT PAGE
+    TextInputCacel,
+    TextInputOk,
     // HOUSE PAGE
     ZigbeeToggleLights,
     // MEDIA PLAYER PAGE
@@ -98,9 +105,9 @@ pub enum TouchAction {
     SettingsToggleMic,
     SettingsToggleSpeaker,
     SettingsToggleStreaming,
+    SettingsToggleSsh,
     SettingsToggleWakeWord,
-    SettingsToggleDisplay,
-            
+    SettingsToggleDisplay,            
 }
 
 pub fn hit_test(x: i32, y: i32, area: &HitArea) -> bool {
@@ -125,5 +132,9 @@ pub async fn flush_vsync_async(
     while te.is_low() {
         embassy_time::Timer::after_micros(100).await;
     }
+    crate::dirty!();
     fb.flush(display);
+    crate::dirty!();
 }
+
+

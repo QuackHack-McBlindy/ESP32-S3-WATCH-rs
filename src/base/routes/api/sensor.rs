@@ -40,8 +40,8 @@ pub fn handle_sensor(req: tinyapi::Request<'_>) -> tinyapi::Response {
 }
 
 // GET /API/SENSORS (SHOWS ALL SENSOR VALUES IN ONE CALL FORMATTED AS JSON)
+// GET /API/SENSORS (SHOWS ALL SENSOR VALUES IN ONE CALL FORMATTED AS JSON)
 pub fn handle_sensors(_req: tinyapi::Request<'_>) -> tinyapi::Response {
-    // LOAD EXISTING SENSORS
     // BATTERY
     let battery_percent = crate::load!(crate::state::BATTERY_PERCENT);
     let battery_voltage = crate::load!(crate::state::BATTERY_VOLTAGE);
@@ -49,26 +49,40 @@ pub fn handle_sensors(_req: tinyapi::Request<'_>) -> tinyapi::Response {
     let battery_need_charging = crate::load!(crate::state::BATTERY_NEED_CHARGING);
     let battery_full = crate::load!(crate::state::BATTERY_FULL);
     let battery_usb_connected = crate::load!(crate::state::BATTERY_USB_CONNECTED);
-        
+
+    // NETWORK/SYSTEM
     let rssi = crate::load!(crate::state::RSSI);
-    let mic_vol = crate::load!(crate::state::MIC_VOLUME);
-    let spk_vol = crate::load!(crate::state::SPEAKER_VOLUME);
-    let display_state = crate::load!(crate::state::DISPLAY_STATE);
-    let brightness = crate::load!(crate::state::DISPLAY_BRIGHTNESS);
     let ip_raw = crate::load!(crate::state::CURRENT_IP);
     let ip = embassy_net::Ipv4Address::from(ip_raw);
     let version = crate::state::FW_VERSION;
 
-    // ADDITIONAL AUDIO & SYSTEM STATES
+    // AUDIO
+    let mic_vol = crate::load!(crate::state::MIC_VOLUME);
+    let spk_vol = crate::load!(crate::state::SPEAKER_VOLUME);
     let mic_muted = crate::load!(crate::state::MIC_MUTED);
     let speaker_muted = crate::load!(crate::state::SPEAKER_MUTED);
     let speaker_task_state = crate::load!(crate::state::SPEAKER_TASK_STATE);
     let speaker_allow_streaming = crate::load!(crate::state::SPEAKER_ALLOW_STREAMING);
     let amplifier_state = crate::load!(crate::state::AMPLIFIER_STATE);
+
+    // DISPLAY
+    let display_state = crate::load!(crate::state::DISPLAY_STATE);
+    let brightness = crate::load!(crate::state::DISPLAY_BRIGHTNESS);
+    let display_timeout = crate::load!(crate::state::DISPLAY_TIMEOUT_SECS);
+
+    // MEDIA/STORAGE
     let sd_ready = crate::load!(crate::state::SD_READY);
     let media_is_playing = crate::load!(crate::state::MEDIA_IS_PLAYING);
 
-    // UPTIME (SECONDS SINCE BOOT)
+    // POWER/CPU
+    let low_power_mode = crate::load!(crate::state::LOW_POWER_MODE);
+    let cpu_freq = crate::load!(crate::state::CPU_FREQ);
+    let powerdown_timeout = crate::load!(crate::state::POWERDOWN_TIMEOUT_SECS);
+
+    // SERVICES
+    let ssh_state = crate::load!(crate::state::SSH_STATE);
+
+    // TIME
     let uptime_secs = crate::load!(crate::state::UPTIME_SECS);
     let uptime_str = {
         let days = uptime_secs / 86400;
@@ -85,8 +99,6 @@ pub fn handle_sensors(_req: tinyapi::Request<'_>) -> tinyapi::Response {
             alloc::format!("{}s", seconds)
         }
     };
-
-    // CONVERT & FORMAT TIME (HH:MM:SS)
     let time_secs = crate::load!(crate::state::CURRENT_TIME_SECS);
     let time_str = if time_secs > 0 {
         let hours = (time_secs % 86400) / 3600;
@@ -95,9 +107,9 @@ pub fn handle_sensors(_req: tinyapi::Request<'_>) -> tinyapi::Response {
         alloc::format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
     } else { "unknown".into() };
 
-    // FORMAT AS JSON
+
     let response_str = alloc::format!(
-        "{{\"battery_percent\":{},\"battery_voltage\":{},\"battery_charging\":{},\"battery_need_charging\":{},\"battery_full\":{},\"battery_usb_connected\":{},\"display_state\":{},\"rssi\":{},\"mic_volume\":{},\"speaker_volume\":{},\"brightness\":{},\"ip\":\"{}\",\"uptime\":\"{}\",\"time\":\"{}\",\"firmware\":\"{}\",\"mic_muted\":{},\"speaker_muted\":{},\"speaker_task_state\":{},\"speaker_allow_streaming\":{},\"amplifier_state\":{},\"sd_ready\":{},\"media_is_playing\":{},\"media\":\"Nothing playing\"}}",
+        "{{\"battery_percent\":{},\"battery_voltage\":{},\"battery_charging\":{},\"battery_need_charging\":{},\"battery_full\":{},\"battery_usb_connected\":{},\"display_state\":{},\"display_timeout\":{},\"rssi\":{},\"mic_volume\":{},\"speaker_volume\":{},\"brightness\":{},\"ip\":\"{}\",\"uptime\":\"{}\",\"time\":\"{}\",\"firmware\":\"{}\",\"mic_muted\":{},\"speaker_muted\":{},\"speaker_task_state\":{},\"speaker_allow_streaming\":{},\"amplifier_state\":{},\"sd_ready\":{},\"media_is_playing\":{},\"low_power_mode\":{},\"cpu_freq\":{},\"powerdown_timeout\":{},\"ssh_state\":{},\"media\":\"Nothing playing\"}}",
         battery_percent,
         battery_voltage,
         battery_charging,
@@ -105,6 +117,7 @@ pub fn handle_sensors(_req: tinyapi::Request<'_>) -> tinyapi::Response {
         battery_full,
         battery_usb_connected,
         display_state,
+        display_timeout,
         rssi,
         mic_vol,
         spk_vol,
@@ -119,9 +132,12 @@ pub fn handle_sensors(_req: tinyapi::Request<'_>) -> tinyapi::Response {
         speaker_allow_streaming,
         amplifier_state,
         sd_ready,
-        media_is_playing
+        media_is_playing,
+        low_power_mode,
+        cpu_freq,
+        powerdown_timeout,
+        ssh_state
     );
 
     tinyapi::Response::text(&response_str)
 }
-

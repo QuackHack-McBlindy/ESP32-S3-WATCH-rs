@@ -6,7 +6,6 @@
 use embedded_graphics::prelude::Primitive;
 
 
-
 const W: i32 = crate::state::LCD_WIDTH as i32;
 const H: i32 = crate::state::LCD_HEIGHT as i32;
 
@@ -206,8 +205,6 @@ pub fn handle_swipe(
                 let current: u32 = crate::load!(crate::state::DISPLAY_TIMEOUT_SECS);
                 let new_val = (current as i32 + delta_val).clamp(5, 60) as u32;
                 crate::store!(crate::state::DISPLAY_TIMEOUT_SECS, new_val);
-                // APPLY IMMEDIATELY (IF SUCH FUNCTION EXISTS)
-                // crate::set_display_timeout(new_val);
                 defmt::info!("Display timeout adjusted to {} sec", new_val);
             }
         }

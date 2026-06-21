@@ -3,7 +3,7 @@
 runner = "espflash flash --monitor --chip esp32s3 --log-format defmt"
 # UNCOMMENT BELOW TO USE THE PARTITION TABLE DEFINED IN `partitions.csv`
 #runner = "espflash flash --monitor --chip esp32s3 --partition-table=partitions.csv --log-format defmt"
-
+#runner = "espflash flash --monitor --chip esp32s3 --partition-table=partitions.csv --target-app-partition factory --log-format defmt"
 # ───────────────────────────────────────────────────────────────────────
 # FIRMWARE ENVIORMENT VARIABLES
 # ALSO SET IN THE `docker-compose.yaml` FILE

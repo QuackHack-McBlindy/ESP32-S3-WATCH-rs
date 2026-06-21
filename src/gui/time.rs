@@ -5,10 +5,9 @@
 // QUICK ACTION CONTROL CENTER:
 //   SWIPE DOWN FROM TOP OF THE DISPLAY
 // "TINY" STATUS ICONS:
-//   WI‑FI SIGNAL BARS (SHOWN WHEN CONNECTED)
-//   BATTERY ICON (CHARGING STATE + COLOR CODED)
+//   WI‑FI SIGNAL BARS (COLOR CODED & HIDDEN WHEN NOT CONNECTED)
+//   BATTERY ICON (BATTERY LEVEL + CHARGING STATE + COLOR CODED)
 
-use crate::components::framebuffer::Framebuffer;
 use embedded_graphics::prelude::IntoStorage;
 
 // ───────────────────────────────────────────────────────────
@@ -186,7 +185,7 @@ fn draw_tinted_icon(
 
 // ───────────────────────────────────────────────────────────
 // PUBLIC DRAW FUNCTION
-pub fn draw(fb: &mut Framebuffer) {
+pub fn draw(fb: &mut crate::components::framebuffer::Framebuffer) {
     let w = crate::state::LCD_WIDTH as i32;
     let h = crate::state::LCD_HEIGHT as i32;
     let screen_w = w as usize;
@@ -247,40 +246,67 @@ pub fn draw(fb: &mut Framebuffer) {
         crate::gui::colors::RED
     }).into_storage();
 
-    let battery_bytes = if crate::load!(crate::state::BATTERY_USB_CONNECTED) {
+    // Choose the correct level icon, or the charging icon
+    let battery_icon = if crate::load!(crate::state::BATTERY_USB_CONNECTED) {
         crate::base::assets::SETTINGS_BATTERY_CHARGING_PNG
     } else {
-        crate::base::assets::SETTINGS_BATTERY_PNG
+        match battery_percent {
+            0..=9  => crate::base::assets::SETTINGS_BATTERY_WARNING_PNG, // lowest
+            10..=29 => crate::base::assets::SETTINGS_BATTERY_EMPTY_PNG,
+            30..=49 => crate::base::assets::SETTINGS_BATTERY_LOW_PNG,
+            50..=69 => crate::base::assets::SETTINGS_BATTERY_MEDIUM_PNG,
+            70..=89 => crate::base::assets::SETTINGS_BATTERY_HIGH_PNG,
+            _       => crate::base::assets::SETTINGS_BATTERY_FULL_PNG,  // 90+
+        }
     };
 
     // BAT ICON
-    let bat_width = if let core::result::Result::Ok(png) = embedded_png::Png::load_from_bytes(battery_bytes) {
+    let bat_width = if let core::result::Result::Ok(png) = embedded_png::Png::load_from_bytes(battery_icon) {
         let img_w = png.width() as i32;
         let img_h = png.height() as i32;
         let scale = core::cmp::max(1, ICON_HEIGHT / img_h.max(1));
         img_w * scale
     } else { 0 };
     let bat_x = w - bat_width - margin;
-    draw_tinted_icon(fb.buffer_mut(), screen_w, screen_h, battery_bytes, battery_color, bat_x, margin, ICON_HEIGHT);
+    draw_tinted_icon(fb.buffer_mut(), screen_w, screen_h, battery_icon, battery_color, bat_x, margin, ICON_HEIGHT);
+
 
     // WIFI BARS (HIDE WHEN NOT CONNECTED)
     if crate::load!(crate::state::WIFI_CONNECTED) {
-        let wifi_bytes = crate::base::assets::SETTINGS_BAR_PNG;
-        let wifi_width = if let core::result::Result::Ok(png) = embedded_png::Png::load_from_bytes(wifi_bytes) {
+        // GET RAW RSSI (SIGNAL STRENGTH IN dBm, NEGATIVE VALUE)
+        let rssi: i32 = crate::load!(crate::state::RSSI);
+
+        // CHOOSE THE RIGHT ICON AND COLOR BASED ON RSSI RANGE
+        let (wifi_icon, wifi_color) = match rssi {
+            -90..=-80 => (crate::base::assets::SETTINGS_SIGNAL_VERY_LOW_PNG, crate::gui::colors::RED),
+            -79..=-70 => (crate::base::assets::SETTINGS_SIGNAL_LOW_PNG,      crate::gui::colors::ORANGE),
+            -69..=-60 => (crate::base::assets::SETTINGS_SIGNAL_MEDIUM_PNG,   crate::gui::colors::YELLOW),
+            -59..=-50 => (crate::base::assets::SETTINGS_SIGNAL_HIGH_PNG,     crate::gui::colors::GREEN),
+            _         => (crate::base::assets::SETTINGS_SIGNAL_FULL_PNG,     crate::gui::colors::GREEN),
+        };
+
+        // CALCULATE WIDTH FOR ICON (ADAPTIVE)
+        let wifi_width = if let core::result::Result::Ok(png) = embedded_png::Png::load_from_bytes(wifi_icon) {
             let img_w = png.width() as i32;
             let img_h = png.height() as i32;
             let scale = core::cmp::max(1, ICON_HEIGHT / img_h.max(1));
             img_w * scale
         } else { 0 };
+
+        // POSITION TO THE LEFT OF THE BATTERY ICON
         let wifi_x = bat_x - wifi_width - margin;
-        draw_tinted_icon(fb.buffer_mut(), screen_w, screen_h, wifi_bytes, crate::gui::colors::WHITE.into_storage(), wifi_x, margin, ICON_HEIGHT);
+
+        // DRAW WITH THE PROPER COLOR
+        draw_tinted_icon(
+            fb.buffer_mut(),
+            screen_w,
+            screen_h,
+            wifi_icon,
+            wifi_color.into_storage(),
+            wifi_x,
+            margin,
+            ICON_HEIGHT,
+        );
     }
 
-    // CONTROL CENTER OVERLAY
-    let offset = critical_section::with(|cs| {
-        crate::gui::control_center::OVERLAY.borrow_ref(cs).current_offset
-    });
-    if offset > -(crate::state::LCD_HEIGHT as i32) {
-        crate::gui::control_center::draw_overlay(fb, offset);
-    }
 }

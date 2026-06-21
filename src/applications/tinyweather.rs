@@ -53,7 +53,7 @@ pub fn open_app() {
 pub async fn get_current_weather(
     stack: embassy_net::Stack<'_>,
 ) -> core::option::Option<()> {
-    defmt::info!("Fetching weather from http://5.9.243.187/?format=j1");
+    defmt::info!("Fetching weather...");
 
     let mut buf = alloc::vec![0u8; 40960];
 
@@ -65,23 +65,23 @@ pub async fn get_current_weather(
     .await
     {
         core::result::Result::Ok(resp) => {
-            defmt::info!("HTTP GET succeeded, status = {}", resp.status);
-            defmt::info!("Response body length = {} bytes", resp.body.len());
+            defmt::debug!("HTTP GET succeeded, status = {}", resp.status);
+            defmt::debug!("Response body length = {} bytes", resp.body.len());
             resp
         }
         core::result::Result::Err(_) => {
-            defmt::info!("HTTP GET request failed");
+            defmt::error!("HTTP GET request failed");
             return core::option::Option::None;
         }
     };
 
     if status != 200 {
-        defmt::info!("HTTP status not 200 (got {}), aborting", status);
+        defmt::error!("HTTP status not 200 (got {}), aborting", status);
         return core::option::Option::None;
     }
 
     let weather_data = parse_wttr_json(body)?;
-    defmt::info!("Weather parsed successfully, storing...");
+    defmt::debug!("Weather parsed successfully, storing...");
 
     *WEATHER.lock().await = core::option::Option::Some(weather_data);
     core::option::Option::Some(())
@@ -458,6 +458,40 @@ pub fn weather_png(code: &str) -> core::option::Option<&'static [u8]> {
             core::option::Option::Some(crate::base::assets::SNOW_PNG)
         }
         // FALLBACK
-        _ => core::option::Option::Some(crate::base::assets::WEATHER_DRIZZLE_PNG),
+        _ => core::option::Option::Some(crate::base::assets::UNKNOWN_WEATHER_PNG),
     }
 }
+
+
+// ───────────────────────────────────────────────────────────────────────
+// WEATHER TASK THAT FETCH NEW WEATHER DATA ON REQUEST
+use core::sync::atomic::{AtomicBool, Ordering};
+pub static WEATHER_CMD: embassy_sync::channel::Channel<embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex, (), 1> = embassy_sync::channel::Channel::new();
+
+static FETCHING: AtomicBool = AtomicBool::new(false);
+
+#[embassy_executor::task]
+pub async fn weather_task(stack: embassy_net::Stack<'static>) {
+    loop {
+        WEATHER_CMD.receive().await;
+        get_current_weather(stack).await;
+        crate::delay_s!(3);
+        crate::dirty!();
+        crate::delay_s!(45);
+        FETCHING.store(false, Ordering::Release);
+    }
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// PUBLIC ZERO ARGS REFRESH FUNCTION
+// ASYNC
+pub async fn update() {
+    WEATHER_CMD.send(()).await;
+}
+// NOT ASYNC!
+pub fn update_now() {
+    if FETCHING.swap(true, Ordering::AcqRel) == false {
+        if WEATHER_CMD.try_send(()).is_err() { FETCHING.store(false, Ordering::Release); }
+    }
+}
+

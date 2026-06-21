@@ -1,4 +1,6 @@
 // BASE/UPTIME
+
+
 fn format_uptime(dur: embassy_time::Duration) -> heapless::String<16> {
     let total_secs = dur.as_secs();
     let days = total_secs / 86400;

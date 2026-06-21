@@ -135,7 +135,7 @@ pub async fn ntp_sync(stack: &embassy_net::Stack<'static>) -> Result<(), &'stati
             let local_secs = unix_secs + timezone_offset(unix_secs) as i64;
 
             let (year, month, day, hour, minute, second) = unix_to_datetime(local_secs);
-            defmt::info!("NTP time: {:04}-{:02}-{:02} {:02}:{:02}:{:02}", year, month, day, hour, minute, second);
+            defmt::debug!("NTP time: {:04}-{:02}-{:02} {:02}:{:02}:{:02}", year, month, day, hour, minute, second);
 
             critical_section::with(|cs| {
                 let mut bus_ref = crate::I2C_BUS.borrow_ref_mut(cs);

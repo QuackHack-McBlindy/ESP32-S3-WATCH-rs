@@ -6,7 +6,6 @@ pub mod media_player; // QWACKIFY
 pub mod duck_tv;
 pub mod duckcloud;
 pub mod settings;
-pub mod house;
 pub mod tinyweather;
 
 
@@ -25,7 +24,6 @@ pub struct AppDescriptor {
 pub static APPS: &[AppDescriptor] = &[
     media_player::APP_DESCRIPTOR,
     duck_tv::APP_DESCRIPTOR,
-    house::APP_DESCRIPTOR,
     duckcloud::APP_DESCRIPTOR,
     settings::APP_DESCRIPTOR,
     tinyweather::APP_DESCRIPTOR,

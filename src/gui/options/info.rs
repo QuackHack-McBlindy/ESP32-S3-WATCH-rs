@@ -322,9 +322,11 @@ fn draw_info_page(
             // TRY TO READ CURRENT CONNECTED SSID            
             let ssid_line = match crate::state::CONNECTED_SSID.try_lock() {
                 Ok(guard) => {
-                    if let Some(ssid) = *guard {
+                    if let Some(ssid) = guard.as_ref() {   // <-- borrow, don't move
                         alloc::format!("SSID:  {}", ssid)
-                    } else { alloc::string::String::from("SSID:  --") }
+                    } else {
+                        alloc::string::String::from("SSID:  --")
+                    }
                 }
                 Err(_) => alloc::string::String::from("SSID:  --"),
             };

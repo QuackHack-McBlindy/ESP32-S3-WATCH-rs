@@ -29,8 +29,15 @@ pub fn draw(fb: &mut crate::components::framebuffer::Framebuffer) {
         .map(|guard| *guard)
         .unwrap_or(0);
 
+    // NO DATA YET
     if weather_opt.is_none() {
-        return; // NO DATA YET
+        if let Ok(png) = embedded_png::Png::load_from_bytes(crate::base::assets::UNKNOWN_WEATHER_PNG) {
+            let scale = 1.25;
+            let iw = (png.width() as f32 * scale) as i32;
+            let ih = (png.height() as f32 * scale) as i32;
+            draw_scaled_png_raw(fb.buffer_mut(), &png, (w - iw)/2, (h - ih)/2 - 60, scale, screen_w, screen_h);
+        }
+        return;
     }
     let weather = weather_opt.unwrap();
 
@@ -55,10 +62,10 @@ pub fn draw(fb: &mut crate::components::framebuffer::Framebuffer) {
     // ───────────────────────────────────────────────────────────────────────
     // WEATHER ICON
     let png_bytes = crate::applications::tinyweather::weather_png(code)
-        .unwrap_or(crate::base::assets::WEATHER_DRIZZLE_PNG);
+        .unwrap_or(crate::base::assets::UNKNOWN_WEATHER_PNG);
     let png = embedded_png::Png::load_from_bytes(png_bytes).ok();
     if png.is_none() {
-        return;
+        let png = embedded_png::Png::load_from_bytes(crate::base::assets::UNKNOWN_WEATHER_PNG).ok();
     }
     let png = png.unwrap();
 
@@ -160,12 +167,25 @@ fn draw_scaled_png_raw(
 // ───────────────────────────────────────────────────────────────────────
 // TOUCH HANDLING – CYCLES THROUGH FORECAST
 pub fn handle_touch(_x: i32, _y: i32) -> core::option::Option<crate::gui::TouchAction> {
-    if let core::result::Result::Ok(mut guard) =
-        crate::applications::tinyweather::WEATHER_DAY.try_lock()
-    {
-        *guard = (*guard + 1) % 4;
+    let has_data = crate::applications::tinyweather::WEATHER
+        .try_lock()
+        .ok()
+        .map(|g| g.is_some())
+        .unwrap_or(false);
+
+    if !has_data {
+        // NO DATA! - FETCH DATA!
+        crate::applications::tinyweather::update_now();
+        defmt::debug!("tinyWeather: requesting update (no data)");
+    } else {
+        if let core::result::Result::Ok(mut guard) =
+            crate::applications::tinyweather::WEATHER_DAY.try_lock()
+        {
+            *guard = (*guard + 1) % 4;
+        }
+        defmt::debug!("tinyWeather: changed day!");
     }
+
     crate::dirty!(); // REDRAW DISPLAY NOW
-    defmt::info!("tinyWeather: changed day!");
     core::option::Option::Some(crate::gui::TouchAction::None)
 }

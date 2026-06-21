@@ -9,6 +9,134 @@
 //    unsafe { Cache_Invalidate_DCache_All() };
 //}
 
+
+
+// ───────────────────────────────────────────────────────────────────────
+// PAGES RELATED
+
+// DEFINE_PAGES!
+// DRASTICALLY REDUCE BOILERPLATE WHEN DEFINING PAGES
+// GENERATES THE Page ENUM, IT'S NAVIGATION METHODS & DISPATCH FUNCTIONS FOR SWIPE/TAP HANDLERS
+
+// USAGE:
+// define_pages! {
+//     MyPage = 1, is_settings: false, prev: OtherPage, next: OtherPage, swipe: "module", tap: "module",
+// }
+#[macro_export]
+macro_rules! define_pages {
+    (
+        $(
+            $variant:ident = $num:literal,
+            is_settings: $is_settings:expr,
+            prev: $prev:tt,
+            next: $next:tt
+            $(, $opt:ident : $val:ident)*
+        );*
+        $(;)?
+    ) => {
+        #[repr(u8)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, defmt::Format)]
+        pub enum Page {
+            $($variant = $num),*
+        }
+
+        impl Page {
+            pub fn from_raw(raw: u8) -> Option<Self> {
+                match raw {
+                    $($num => Some(Self::$variant)),* ,
+                    _ => None,
+                }
+            }
+
+            pub fn is_settings_page(&self) -> bool {
+                match self {
+                    $(Self::$variant => $is_settings),*
+                }
+            }
+
+            pub fn next_setting(&self) -> Self {
+                match self {
+                    $(Self::$variant => define_pages_nav_target!($next, self)),*
+                }
+            }
+
+            pub fn prev_setting(&self) -> Self {
+                match self {
+                    $(Self::$variant => define_pages_nav_target!($prev, self)),*
+                }
+            }
+        }
+
+        // SWIPE DISPATCHER
+        pub fn handle_settings_swipe(
+            page: Page,
+            direction: crate::components::ft3168::SwipeDirection,
+            start_x: u16,
+            start_y: u16,
+            last_x: u16,
+            last_y: u16,
+        ) {
+            match page {
+                $(
+                    Page::$variant => {
+                        $(
+                            define_pages_opt_swipe!($opt, $val, direction, start_x, start_y, last_x, last_y);
+                        )*
+                    }
+                ),*
+            }
+        }
+
+        // TAP DISPATCHER
+        pub fn handle_settings_tap(
+            page: Page,
+            x: u16,
+            y: u16,
+        ) -> Option<crate::gui::TouchAction> {
+            match page {
+                $(
+                    Page::$variant => {
+                        $(
+                            define_pages_opt_tap!($opt, $val, x, y);
+                        )*
+                        None
+                    }
+                ),*
+            }
+        }
+    };
+}
+
+// NAVIGATION TARGET (None = STAY ON SAME PAGE)
+#[macro_export]
+macro_rules! define_pages_nav_target {
+    (None, $self:tt) => { *$self };
+    ($ident:ident, $self:tt) => { Self::$ident };
+}
+
+// EMIT SWIPE CALL ONLY WHEN $opt IS "swipe"
+// NOTE: CALLS `handle_swipe`
+#[macro_export]
+macro_rules! define_pages_opt_swipe {
+    (swipe, $val:ident, $dir:ident, $sx:ident, $sy:ident, $lx:ident, $ly:ident) => {
+        crate::gui::options::$val::handle_swipe($dir, $sx, $sy, $lx, $ly);
+    };
+    ($other:ident, $val:ident, $($rest:ident),*) => {};
+}
+
+// EMIT TAP CALL ONLY WHEN $opt IS "tap", AND RETURN ITS RESULT
+// NOTE: CALLS `handle_touch`
+#[macro_export]
+macro_rules! define_pages_opt_tap {
+    (tap, $val:ident, $x:ident, $y:ident) => {
+        return crate::gui::options::$val::handle_touch($x as i32, $y as i32);
+    };
+    ($other:ident, $val:ident, $x:ident, $y:ident) => {};
+}
+
+
+
+
 // ───────────────────────────────────────────────────────────────────────
 // DISPLAY RELATED
 
@@ -18,7 +146,17 @@
 #[macro_export]
 macro_rules! dirty {
     () => {
-        crate::state::DISPLAY_DIRTY.store(true, core::sync::atomic::Ordering::Release);
+        $crate::state::DISPLAY_DIRTY.store(true, core::sync::atomic::Ordering::Release);
+        let now = embassy_time::Instant::now();
+        let scheduled = now + embassy_time::Duration::from_secs(1);
+
+        critical_section::with(|cs| {
+            let cell = $crate::state::DELAYED_DIRTY_TIME.borrow(cs);
+            let current = cell.get();
+            if current.is_none() || scheduled > current.unwrap() {
+                cell.set(Some(scheduled));
+            }
+        });
     };
 }
 
@@ -35,18 +173,18 @@ macro_rules! is_dirty {
 
 #[macro_export]
 macro_rules! dirty_loop_on {
-    () => {
-        crate::state::DISPLAY_LOOP_DIRTY.store(true, core::sync::atomic::Ordering::Relaxed);
+    () => {{
         defmt::info!("DIRTY LOOPING!");
-    };
+        crate::state::DISPLAY_LOOP_DIRTY.store(true, core::sync::atomic::Ordering::Relaxed);
+    }};
 }
 
 #[macro_export]
 macro_rules! dirty_loop_off {
-    () => {
+    () => {{
         defmt::info!("NOO MORE DIRTY LOOPIN'");
         crate::state::DISPLAY_LOOP_DIRTY.store(false, core::sync::atomic::Ordering::Relaxed);
-    };
+    }};
 }
 
 

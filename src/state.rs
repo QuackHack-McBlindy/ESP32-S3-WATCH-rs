@@ -1,3 +1,4 @@
+// STATE.RS
 // STATE MACHINE 
 // CHIP GPIO, CONFIGURATION DEFINITIONS
 // ++ CURRENT STATES AS ATOMIC VARIABLES 
@@ -23,8 +24,12 @@ crate::init_u32!(CURRENT_TIME_SECS, 0);// SECONDS SINCE MIDNIGHT
 
 // ───────────────────────────────────────────────────────────────────────
 // NETWORK RELATED
-pub static CONNECTED_SSID: embassy_sync::mutex::Mutex<embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex, Option<&'static str>> =
-    embassy_sync::mutex::Mutex::new(None);
+//pub static CONNECTED_SSID: embassy_sync::mutex::Mutex<embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex, Option<&'static str>> =
+//    embassy_sync::mutex::Mutex::new(None);
+pub static CONNECTED_SSID: embassy_sync::mutex::Mutex<
+    embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
+    Option<heapless::String<32>>,
+> = embassy_sync::mutex::Mutex::new(None);
 
 crate::init_u32!(CURRENT_IP, 0);
 crate::init_i32!(RSSI, 0);
@@ -53,6 +58,22 @@ crate::init_bool!(BLUETOOTH_STATE, false);
 pub const BACKEND_TCP_HOST: &str = env!("BACKEND_TCP_HOST");
 pub const BACKEND_TCP_PORT_STR: &str = env!("BACKEND_TCP_PORT");
 
+// SSH
+pub const SSH_USER: &str = env!("SSH_USER");
+pub const SSH_PASSWORD: &str = env!("SSH_PASSWORD");
+pub const SSH_HOSTKEY_HEX: Option<&str> = option_env!("SSH_HOSTKEY");
+pub const MAX_KEYS: usize = 3; // INCREMMENT IF USING MORE KEYS! 
+pub const SSH_PUBKEY: Option<&str> = option_env!("SSH_PUBKEY");
+pub const SSH_PUBKEY2: Option<&str> = option_env!("SSH_PUBKEY2");
+pub const SSH_PUBKEY3: Option<&str> = option_env!("SSH_PUBKEY3");
+crate::init_bool!(SSH_STATE, false);
+
+// WIREGUARD
+pub const WG_PRIVATE_KEY_HEX: Option<&str> = option_env!("WG_PRIVATE_KEY");
+pub const WG_SERVER_PUB_KEY: Option<&str> = option_env!("WG_SERVER_PUBLIC_KEY");
+pub const WG_ENDPOINT: Option<&str> = option_env!("WG_ENDPOINT");
+crate::init_bool!(WG_STATE, false);
+
 
 // ───────────────────────────────────────────────────────────────────────
 // CPU RELATED
@@ -76,6 +97,9 @@ pub const LCD_ROW_OFFSET: u16 = 0;
 // TE (TEARING EFFECT SYNC)
 crate::init_u8!(LCD_TE, 13);
 
+pub static DELAYED_DIRTY_TIME: critical_section::Mutex<core::cell::Cell<Option<embassy_time::Instant>>> =
+    critical_section::Mutex::new(core::cell::Cell::new(None));
+    
 crate::init_bool!(DISPLAY_STATE, false);
 crate::init_bool!(DISPLAY_DIRTY, false);
 crate::init_bool!(DISPLAY_LOOP_DIRTY, false);
@@ -107,7 +131,8 @@ crate::init_u8!(TP_I2C_ADDR, 0x38);
 // PMU RELATED
 crate::init_u8!(PMIC_I2C_ADDR, 0x34);
 crate::init_bool!(POWER_STATE, true);
-
+crate::init_bool!(LOW_POWER_MODE, false);
+crate::init_u32!(POWERDOWN_TIMEOUT_SECS, 0);
 
 // ───────────────────────────────────────────────────────────────────────
 // BATTERY RELATED
@@ -236,3 +261,7 @@ pub static CALLER_NAME: critical_section::Mutex<core::cell::RefCell<Option<heapl
 // ───────────────────────────────────────────────────────────────────────
 // NOTIFICATION RELATED
 crate::init_bool!(ALERT_STATE, false);
+
+
+
+crate::init_bool!(LIGHTS_STATE, false);

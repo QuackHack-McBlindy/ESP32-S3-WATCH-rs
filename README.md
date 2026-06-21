@@ -28,7 +28,7 @@ My watch can execute **57** different [scripts](https://github.com/QuackHack-McB
   
 The top-tier performance come from a **deterministic** voice architecture and smart caching inside the voice intents.  
   
- 
+
 
 ## **Table Of Contents**
 
@@ -40,9 +40,11 @@ The top-tier performance come from a **deterministic** voice architecture and sm
   - [Frontend](#frontend)
   - [API](#api)
   - [Media Player](#media-player)
+  - [SSH](#ssh)
 - [Voice Assistant](#voice-assistant)
   - [Architecture](#architecture)
   - [My Voice Commands](#my-voice-commands)
+- [Networking](#networking)  
 - [Hardware](#hardware)
   - [Peripherals](#peripherals)
     - [I2S](#i2s)
@@ -250,9 +252,11 @@ I also prefer to have some of the extensive code as library crates, it can be us
 ├── 📂 crates
 │   ├── 📂 barely-fuzzy
 │   ├── 📂 embedded-png
+│   ├── 📂 embedded-keyboard
 │   ├── 📂 es7210
 │   ├── 📂 es8311
 │   ├── 📂 tinyapi
+│   ├── 📂 tinytunnel
 │   └── 📂 yo-esp
 ├── 📂 gui
 ├── 📄 main.rs
@@ -287,13 +291,17 @@ Extend with more crazy ideas as they pop up. `ESP32-S3-WATCH-rs` is still under 
 - [x] On-Device API
 - [x] On-Device WebServer & Web Media Player (with casting to Android TV)
 - [x] Control & start/pause any task from the GUI 
-- [ ] Draw graphs on watch from input data 
-- [ ] Generate on-device QR codes. (need TLS for secure secret sharing via QR)
+- [x] SSHd (+ client)
+- [x] Live feed keyboard input over SSH
+- [x] Interactive Shell over SSH
 - [x] Broadcasting all text-to-speech to every ESP32 device.   
 - [x] tinyWeather app - tap weather page to cycle displayed day (3-day forecast)
 - [x] Change CPU frequency at runtime/from GUI
-- [ ] Phone calls/text message (Bluetooth HandsFree Protocol)
+- [x] Automatic filesystem testing (cargo run --release --features sd-test)
+- [ ] Phone calls/text message (HFP)
 - [ ] Remember settings changes between boots/firmware updates
+- [ ] Secure network tunnel home (UDP)
+- [ ] Entire voice pipeline `no-std` 
 - [x] Backend: `yo`
 
 `yo` is not only the backend server service but it's also where you will write your voice commands.  
@@ -417,42 +425,51 @@ curl http://<ESP_IP>/api/settings/display/brightness/75
 |----------|-------------|
 | `/` | Serves the web frontend (HTML dashboard) |
 | `/favicon.ico` | Serves the favicon |
+| `/www/{file}` | Serves static files from the `www` directory |
 | `/api` | Returns a plain‑text list of all available API endpoints |
-| `/api/shell/{cmd}` | Send a Shell command (see supported commands below) |
-| `/api/upload/file/{file}` | Upload any file to the root of the SD card **Note: POST** |
-| `/api/upload/file/music/{file}` | Upload a song to the SD cards `/Music` directory **Note: POST** |
-| `/api/download/file/{file}` | Download any file from the `/share` directory of the SD card |
-| `/api/download/file/music/{file}` | Download a song from the SD cards `/Music` directory |
+| `/api/shell/{value}` | Send a Shell command (see supported commands below) |
 | `/api/sensor/{value}` | Read a single sensor/system value (see supported keys below) |
 | `/api/sensors` | Returns all sensor/system values as JSON |
-| `/api/weather/refresh` | Refresh tinyWeater data. |
-| `/api/media/play` | Sends `play` command to the media player. Starts the playback |
-| `/api/media/pause` | Sends `pause` command to the media player. Pauses the playback |
-| `/api/media/prev` | Sends `previous` command to the media player. Plays previous track |
-| `/api/media/next` | Sends `next` command to the media player. Plays next track |
-| `/api/media/heart` | Saves currently playing track to your favourite playlist. |
-| `/api/media/search/songs/{song}` | Fuzzy search & play MP3 files from SD card. Returns matching song names and starts playback |
+| `/api/weather/update` | Update tinyWeather data |
+| `/api/download/file/music/{filename}` | Download a song from the SD card’s `/Music` directory |
+| `/api/download/file/share/{filename}` | Download any file from the `/share` directory of the SD card |
+| `/api/upload/file/music/{filename}` | Upload a song to the SD card’s `/Music` directory **Note: POST** |
+| `/api/media/prev` | Sends `previous` command to the media player – plays previous track |
+| `/api/media/next` | Sends `next` command to the media player – plays next track |
+| `/api/media/play_pause` | Toggles play/pause |
+| `/api/media/heart` | Saves currently playing track to your favourite playlist |
+| `/api/media/search/song/{value}` | Fuzzy search for the best single match and play it |
+| `/api/media/search/songs/{value}` | Fuzzy search up to 10 matches and add them to the playlist |
+| `/api/media/playlist/add/{value}` | Add a song (exact filename/path) to the playlist |
+| `/api/media/playlist/remove/{value}` | Remove a song (exact filename/path) from the playlist |
+| `/api/media/playlist/clear` | Clear the entire temporary playlist |
 | `/api/settings/api/off` | Stops the internal API (including webserver). **Note: use GUI to turn back on** |
-| `/api/settings/bluetooth/{value}` | Set bluetooth state (on/off). |
-| `/api/settings/cpu/{value}` | Set CPU frequency (80, 160, 240). |
+| `/api/settings/ssh/{value}` | Enable/disable/toggle the SSH server (`on`, `off`, `toggle`) |
+| `/api/settings/sleep` | Enter deep sleep immediately |
+| `/api/settings/sleep/reset` | Reset the deep‑sleep timer |
+| `/api/settings/power/low/{value}` | Toggle low‑power mode (`on`, `off`, `toggle`) |
+| `/api/settings/cpu/{value}` | Set CPU frequency (`80`, `160`, `240`) |
 | `/api/settings/mic/volume/{value}` | Set microphone gain (0–100%). `{value}` as integer percent |
 | `/api/settings/mic/mute/{value}` | Mute/unmute mic: `1`/`on`/`mute`, `0`/`off`/`unmute`, or `toggle` |
 | `/api/settings/speaker/{value}` | Toggle speaker task on/off |
 | `/api/settings/speaker/stream/{value}` | Toggle speaker streaming task on/off |
-| `/api/settings/speaker/volume/{value}` | Set speaker volume (0–100%). Will automatically handle mute/unmute & toggle power saving mode on ES8311 + toggle amplifier state when setting zero volume. |
+| `/api/settings/speaker/volume/{value}` | Set speaker volume (0–100%). Automatically handles mute/unmute & amplifier state |
 | `/api/settings/speaker/mute/{value}` | Mute/unmute speaker: same options as mic mute |
-| `/api/settings/speaker/play/ding` | Play ding sound on speaker. Useful for testing purpose. |
-| `/api/settings/voice/{value}` | GET | Enable/disable/toggle the entire voice pipeline. |
-| `/api/settings/voice/wakeword/{value}` | GET | Enable/disable wake‑word streaming (`on`, `off`, `enable`, `disable`) |
+| `/api/settings/speaker/amp/{value}` | Amplifier power: `on`, `off`, or `toggle` |
+| `/api/settings/speaker/play/ding` | Play a test “ding” sound on the speaker |
+| `/api/settings/voice/{value}` | Enable/disable/toggle the entire voice pipeline (`on`, `off`, `toggle`) |
+| `/api/settings/voice/wakeword/{value}` | Enable/disable wake‑word streaming (`on`, `off`, `enable`, `disable`) |
 | `/api/settings/display/brightness/{value}` | Set backlight brightness (0–100%). `{value}` as integer percent |
-| `/api/settings/display/state/{value}` | Set display state (on/off). |
-| `/api/settings/display/redraw` | Force a redraw of the display. |
-| `/api/settings/display/timeout/{value}` | Seconds of inactivety display should wait before automatically turning off. |
-| `/api/settings/display/call/{value}` | Run this endpoiint with the callers name from iPhone when you receieve a phone call to display the calling page on the watch. This page let's user accept/decline the call. |
-| `/api/settings/display/page/{value}` | Change display page. `{value}` integer: 0=clock,1=battery,2=apps,10=media player, etc. |
-| `/api/settings/display/text/{value}` | Displays the provided value as a large text on the display. |
-| `/api/settings/wifi/set/ssid/{ssid}/password/{password}` | (TODO) Saves a WiFi SSID to the WiFI connection list |
+| `/api/settings/display/state/{value}` | Set display state (`on`, `off`, `toggle`) |
+| `/api/settings/display/page/{value}` | Change display page. `{value}` integer: 0=clock, 1=battery, 2=apps, 10=media player, etc. |
+| `/api/settings/display/text/{value}` | Displays the provided value as a large text on the display |
+| `/api/settings/display/call/{value}` | Show the incoming call screen with the caller’s name. The watch can accept/decline the call |
+| `/api/settings/display/redraw` | Force a full redraw of the display |
+| `/api/settings/display/redraw/loop/{value}` | Enable/disable the redraw loop (`on`, `off`) |
 | `/api/settings/wifi/off` | Turns off the WiFi **Note: use GUI to turn back on** |
+| `/api/settings/wifi/scan` | Trigger a WiFi scan (results printed to serial/log) |
+
+
 
 
 ### Supported sensor keys for `/api/sensor/{value}`
@@ -467,8 +484,10 @@ curl http://<ESP_IP>/api/settings/display/brightness/75
 | `battery_usb_connected`                                      | USB connection status               |
 | `brightness`, `display`                                      | Display brightness (0–100)          |
 | `display_state`                                              | Display power state                 |
+| `display_timeout`, `screen_timeout`                          | Display auto‑off timeout (seconds)  |
 | `rssi`, `wifi_signal`, `wifi`                                | Wi‑Fi signal strength in dBm        |
 | `ip`                                                         | Device IPv4 address                 |
+| `cpu`, `cpu_freq`, `cpu_speed`                               | Current CPU frequency in MHz        |
 | `speaker`                                                    | Speaker volume (0–100)              |
 | `mic`                                                        | Microphone gain (0–100)             |
 | `uptime`                                                     | System uptime (e.g., "02h 15m 30s") |
@@ -479,8 +498,11 @@ curl http://<ESP_IP>/api/settings/display/brightness/75
 | `speaker_task_state`                                         | Speaker task running                |
 | `speaker_allow_streaming`                                    | Streaming allowed flag              |
 | `amplifier_state`                                            | Audio amplifier power state         |         
+| `low_power`, `low_power_mode`, `power_save`                  | Low‑power mode state                |
 | `sd_ready`                                                   | SD card ready status                |
 | `media_is_playing`                                           | Media playback active               |
+| `ssh`, `ssh_state`                                           | SSH server state                    |
+| `powerdown_timeout`, `sleep_timeout`                         | Deep‑sleep timeout (seconds)        |
 
 
 ### **Shell**
@@ -544,6 +566,22 @@ You should see something like:
 
 <br>
 
+
+### **SSH**  
+
+The SSH server uses `ed25519` key authentication.  
+If you want a fixed host key on the watch you can generate a secret key by running the command `./scripts/generate_host_key` from the project root. This will create a hex encoded key which can be placed in the `.env` file.  
+Omitting this step is perfectly fine - but you should be aware that a new host key will be used for every connection.  
+*(See the `.env.example` file for example usage.)*  
+  
+
+The SSHd is running on port  2222 and can be started/stopped at any time from the settings page in the GUI.  
+The Shell gives the user full control of the device over a secure conection and supports both named and positional parameters.  
+Once a connection has been established you can type `keyboard` to start a live keyboard input feed to the device.  
+Type `help` to see all available commands.  
+
+
+<br>
  
 ## **Voice Assistant**
 
@@ -654,6 +692,13 @@ That is **2503** regex patterns and makes a total of **272684913** understandabl
 
 <br>  
 
+
+## **Networking**
+
+*Sorry, not yet...*  
+
+
+<br>
 
 ## **Hardware**
 

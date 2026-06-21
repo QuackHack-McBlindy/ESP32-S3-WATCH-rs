@@ -7,3 +7,6 @@ pub mod speaker;
 pub mod voice;
 pub mod wifi;
 pub mod cpu;
+pub mod sleep;
+pub mod ssh;
+pub mod power;

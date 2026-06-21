@@ -70,8 +70,8 @@ pub fn draw(fb: &mut crate::components::framebuffer::Framebuffer) {
         fb,
     );
 
-    // STATIC AMP ICON
-    let icon_bytes = crate::base::assets::SETTINGS_AMP_PNG;
+    // STATIC SPEAKER ICON
+    let icon_bytes = crate::base::assets::SETTINGS_SPEAKER_PNG;
 
     if let core::result::Result::Ok(icon_png) =
         embedded_png::Png::load_from_bytes(icon_bytes)

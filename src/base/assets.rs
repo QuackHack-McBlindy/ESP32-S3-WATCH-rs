@@ -6,6 +6,7 @@
 
 // ───────────────────────────────────────────────────────────────────────
 // FONTS
+// ───────────────────────────────────────────────────────────────────────
 pub const ROBOTO_BOLD: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/fonts/Roboto-Bold.ttf"
@@ -19,54 +20,90 @@ pub const ROBOTO_REGULAR: &[u8] = include_bytes!(concat!(
 
 // ───────────────────────────────────────────────────────────────────────
 // PNG IMAGES
+// ───────────────────────────────────────────────────────────────────────
 
+// ───────────────────────────────────────────────────────────────────────
 // WEATHER ICONS
+pub const UNKNOWN_WEATHER_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/tinyweather/unknown.png"
+));
+
 pub const SUNNY_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/apps/tinyweather/snow.png"
+    "/assets/apps/tinyweather/sun.png"
 ));
 
 pub const PARTLY_CLOUDY_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/apps/tinyweather/snow.png"
+    "/assets/apps/tinyweather/cloud-sun-bold.png"
 ));
 
 pub const CLOUDY_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/apps/tinyweather/snow.png"
+    "/assets/apps/tinyweather/cloud.png"
 ));
 
 pub const RAIN_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/apps/tinyweather/snow.png"
+    "/assets/apps/tinyweather/cloud-drizzle.png"
 ));
 
 pub const THUNDERSTORM_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/apps/tinyweather/snow.png"
+    "/assets/apps/tinyweather/cloud-lightning.png"
 ));
 
 pub const SLEET_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/apps/tinyweather/snow.png"
+    "/assets/apps/tinyweather/cloud-snow-bold.png"
 ));
 
 pub const FOG_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/apps/tinyweather/snow.png"
+    "/assets/apps/tinyweather/cloud-fog-bold.png"
 ));
 
 pub const SNOW_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/apps/tinyweather/snow.png"
+    "/assets/apps/tinyweather/cloud-snow.png"
 ));
 
 
 
+// ───────────────────────────────────────────────────────────────────────
+// CONTROL CENTER ICONS
+pub const SETTINGS_AIRPLANE_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/airplane-bold.png"
+));
+
+pub const SETTINGS_LIGHTBULB_ON_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/lightbulb-on.png"
+));
+
+pub const SETTINGS_LIGHTBULB_OFF_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/lightbulb-off.png"
+));
+
+pub const SETTINGS_LOCATE_PHONE_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/locate_phone.png"
+));
+
+
+// ───────────────────────────────────────────────────────────────────────
 // SETTINGS ICONS
 pub const SETTINGS_ALERT_TRIANGLE_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/apps/settings/alert-triangle.png"
+));
+
+pub const SETTINGS_SLEEP_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/power.png"
 ));
 
 pub const SETTINGS_AMP_PNG: &[u8] = include_bytes!(concat!(
@@ -74,9 +111,42 @@ pub const SETTINGS_AMP_PNG: &[u8] = include_bytes!(concat!(
     "/assets/apps/settings/amp.png"
 ));
 
-pub const SETTINGS_BATTERY_PNG: &[u8] = include_bytes!(concat!(
+pub const SETTINGS_SPEAKER_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/speaker.png"
+));
+
+
+// ───────────────────────────────────────────────────────────────────────
+// BATTERY
+pub const SETTINGS_BATTERY_WARNING_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/battery-warning.png"
+));
+
+pub const SETTINGS_BATTERY_EMPTY_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/apps/settings/battery.png"
+));
+
+pub const SETTINGS_BATTERY_LOW_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/battery-low.png"
+));
+
+pub const SETTINGS_BATTERY_MEDIUM_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/battery-medium.png"
+));
+
+pub const SETTINGS_BATTERY_HIGH_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/battery-high.png"
+));
+
+pub const SETTINGS_BATTERY_FULL_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/battery-full.png"
 ));
 
 pub const SETTINGS_BATTERY_CHARGING_PNG: &[u8] = include_bytes!(concat!(
@@ -84,15 +154,42 @@ pub const SETTINGS_BATTERY_CHARGING_PNG: &[u8] = include_bytes!(concat!(
     "/assets/apps/settings/battery-charging.png"
 ));
 
-pub const SETTINGS_BAR_PNG: &[u8] = include_bytes!(concat!(
+
+// ───────────────────────────────────────────────────────────────────────
+// SIGNAL BARS
+pub const SETTINGS_SIGNAL_VERY_LOW_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/apps/settings/bar-chart.png"
+    "/assets/apps/settings/signal-very-low.png"
 ));
+
+pub const SETTINGS_SIGNAL_LOW_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/signal-low.png"
+));
+
+pub const SETTINGS_SIGNAL_MEDIUM_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/signal-medium.png"
+));
+
+pub const SETTINGS_SIGNAL_HIGH_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/signal-high.png"
+));
+
+pub const SETTINGS_SIGNAL_FULL_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/signal-full.png"
+));
+
+// ───────────────────────────────────────────────────────────────────────
+
 
 pub const SETTINGS_GITHUB_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/apps/settings/github.png"
 ));
+
 
 pub const SETTINGS_ARROW_DOWN_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -137,6 +234,11 @@ pub const SETTINGS_DELETE_PNG: &[u8] = include_bytes!(concat!(
 pub const SETTINGS_API_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/apps/settings/api.png"
+));
+
+pub const SETTINGS_API_OFF_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/api-off.png"
 ));
 
 pub const SETTINGS_MIC_ON_PNG: &[u8] = include_bytes!(concat!(
@@ -281,6 +383,11 @@ pub const MEDIA_PREVIOUS_PNG: &[u8] = include_bytes!(concat!(
 pub const MEDIA_HEART_PNG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/apps/media_player/heart.png"
+));
+
+pub const MEDIA_HEART_FILLED_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/media_player/heart-filled.png"
 ));
 
 pub const MEDIA_CLEAR_PNG: &[u8] = include_bytes!(concat!(

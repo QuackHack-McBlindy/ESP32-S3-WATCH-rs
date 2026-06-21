@@ -1,0 +1,12 @@
+[package]
+name = "embedded-keyboard"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+defmt = "0.3"
+heapless = "0.7"
+embedded-io-async = "0.7.0"
+
+[lib]
+crate-type = ["lib"]

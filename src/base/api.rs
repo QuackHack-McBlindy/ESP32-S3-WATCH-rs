@@ -1,9 +1,9 @@
 // BASE/API
 // CONFIGURES `GET` ENDPOINTS VIA `tinyapi`
-// FOR CONTROLLING/CONFIGURING THE DEVICE EXTERNALLY
+// FOR CONTROLLING/CONFIGURING THE ESP32 EXTERNALLY & VIA VOICE COMMANDS
 // ++ SERVE WEBSERVER AT `http://0.0.0.0:80`
 // EXAMPLE USAGE: (SET DISPLAY BRIGHTNESS TO `70%` USING `curl`) 
-// `curl 192.168.1.11:80/api/settings/display/brightness/70`
+// `curl 192.168.1.11/api/settings/display/brightness/70`
 
 
 // ───────────────────────────────────────────────────────────────────────
@@ -19,6 +19,13 @@ pub async fn init_routes() {
     // /API (GET)
     // LIST AVAILABLE ENDPOINTS
     tinyapi::register_route("/api", crate::base::routes::api::list::handle).await;
+
+    // ───────────────────────────────────────────────────────────────────────
+    // /API/WEATHER (GET)
+
+    // UPDATE
+    tinyapi::register_async_route("/api/weather/update", crate::base::routes::api::weather::update::weather_handler).await;
+
 
     // ───────────────────────────────────────────────────────────────────────
     // /API/SHELL (GET)
@@ -56,9 +63,24 @@ pub async fn init_routes() {
 
     // ───────────────────────────────────────────────────────────────────────
     // /API/MEDIA (GET)
+
+    // PREV
+    tinyapi::register_async_route("/api/media/prev", crate::base::routes::api::media::prev::prev_track_handler).await;
+
+    // NEXT
+    tinyapi::register_async_route("/api/media/next", crate::base::routes::api::media::next::next_track_handler).await;
+
+    // PLAY/PAUSE
+    tinyapi::register_async_route("/api/media/play_pause", crate::base::routes::api::media::play_pause::play_pause_handler).await;
+
+    // HEART (ADD TO FAVOURITES)
+    tinyapi::register_async_route("/api/media/heart", crate::base::routes::api::media::heart::heart_song_handler).await;
+
+    // SEARCH/SONG/{QUERY} (FINDS BEST MATCH AND PLAYS IT)
+    tinyapi::register_async_route("/api/media/search/song/{value}", crate::base::routes::api::media::search::song::fuzzy_song::fuzzy_song_handler).await;
     
-    // SEARCH/SONGS/{QUERY}
-    tinyapi::register_route("/api/media/search/songs/{value}", crate::base::routes::api::media::search::songs::fuzzy_songs::fuzzy_songs_handler).await;    
+    // SEARCH/SONGS/{QUERY} (ADDS 10 BEST MATCHES TO PLAYLIST)
+    tinyapi::register_async_route("/api/media/search/songs/{value}", crate::base::routes::api::media::search::songs::fuzzy_songs::fuzzy_songs_handler).await;
 
     // PLAYLIST/ADD/{QUERY}
     tinyapi::register_route("/api/media/playlist/add/{value}", crate::base::routes::api::media::playlist::append::add_to_playlist_handler).await;    
@@ -79,12 +101,37 @@ pub async fn init_routes() {
 
 
     // ───────────────────────────────────────────────────────────────────────
+    // /API/SETTINGS/SSH (GET)
+
+    // ON/OFF/TOGGLE
+    tinyapi::register_async_route("/api/settings/ssh/{value}", crate::base::routes::api::settings::ssh::state::ssh_handler).await;
+
+
+    // ───────────────────────────────────────────────────────────────────────
+    // /API/SETTINGS/SLEEP (GET)
+    
+    // ENTER DEEP SLEEP
+    tinyapi::register_route("/api/settings/sleep", crate::base::routes::api::settings::sleep::now::sleep_handler).await;
+
+    // RESET TIMER
+    tinyapi::register_route("/api/settings/sleep/reset", crate::base::routes::api::settings::sleep::reset::reset_timer_handler).await;
+        
+
+    // ───────────────────────────────────────────────────────────────────────
+    // /API/SETTINGS/POWER (GET)
+    
+    // LOW (LOW POWER MODE)
+    tinyapi::register_async_route("/api/settings/power/low/{value}", crate::base::routes::api::settings::power::low::low_power_handler).await;
+    
+
+
+
+    // ───────────────────────────────────────────────────────────────────────
     // /API/SETTINGS/CPU (GET)
     
     // SET CPU FREQUENCY (80, 160, 240)
     tinyapi::register_async_route("/api/settings/cpu/{value}", crate::base::routes::api::settings::cpu::set::cpu_handler).await;
     
-
 
     // ───────────────────────────────────────────────────────────────────────
     // /API/SETTINGS/MIC (GET)
@@ -135,8 +182,8 @@ pub async fn init_routes() {
     // BRIGHTNESS
     tinyapi::register_route("/api/settings/display/brightness/{value}", crate::base::routes::api::settings::display::brightness::brightness_handler).await;    
 
-    // STATE
-    // ... (TODO)
+    // STATE (on/off/toggle)
+    tinyapi::register_async_route("/api/settings/display/state/{value}", crate::base::routes::api::settings::display::state::display_state_handler).await;
 
     // PAGE
     tinyapi::register_route("/api/settings/display/page/{value}", crate::base::routes::api::settings::display::page::page_handler).await;
@@ -150,6 +197,10 @@ pub async fn init_routes() {
     // REDRAW
     tinyapi::register_route("/api/settings/display/redraw", crate::base::routes::api::settings::display::redraw::display_redraw_handler).await;
 
+    // REDRAW/LOOP
+    tinyapi::register_async_route("/api/settings/display/redraw/loop/{value}", crate::base::routes::api::settings::display::redraw::redraw_loop_handler).await;
+
+
 
     // ───────────────────────────────────────────────────────────────────────
     // /API/SETTINGS/WIFI (GET)
@@ -157,9 +208,9 @@ pub async fn init_routes() {
     // OFF 
     tinyapi::register_route("/api/settings/wifi/off", crate::base::routes::api::settings::wifi::off::disable_wifi).await;
 
-    // SET/SSID/{SSID}/PASSWORD/{PASSWORD}
-    // ... (TODO)
-    
+    // SCAN
+    tinyapi::register_async_route("/api/settings/wifi/scan", crate::base::routes::api::settings::wifi::scan::scan_handler).await;
+
 
     // ───────────────────────────────────────────────────────────────────────
     // /API/SETTINGS/BLUETOOTH (GET)
@@ -167,7 +218,6 @@ pub async fn init_routes() {
     // ... (TODO)    
 
     // ───────────────────────────────────────────────────────────────────────
-    // ... (TODO MORE)
 
 
 }

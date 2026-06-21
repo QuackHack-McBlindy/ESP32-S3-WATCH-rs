@@ -5,7 +5,7 @@
 
 use crate::alloc::string::ToString;
 
-static CWD: critical_section::Mutex<core::cell::RefCell<alloc::string::String>> =
+pub(crate) static CWD: critical_section::Mutex<core::cell::RefCell<alloc::string::String>> =
     critical_section::Mutex::new(core::cell::RefCell::new(alloc::string::String::new()));
 
 fn decode_percent20(s: &str) -> alloc::string::String {
@@ -298,7 +298,7 @@ pub fn handle_shell(req: tinyapi::Request<'_>) -> tinyapi::Response {
 // HELPERS
 
 // JOIN THE CURRENT WORKING DIRECTORY WITH A RELATIVE PATH (OR RETURN ABSOLUTE)
-fn resolve(arg: Option<&str>) -> alloc::string::String {
+pub(crate) fn resolve(arg: Option<&str>) -> alloc::string::String {
     let a = match arg {
         Some(a) => a,
         None => return critical_section::with(|cs| CWD.borrow(cs).borrow().clone()),
@@ -312,7 +312,7 @@ fn resolve(arg: Option<&str>) -> alloc::string::String {
 }
 
 // RESOLVES AN ABSOLUTE PATH DIRECTLY
-fn resolve_abs(a: &str) -> alloc::string::String {
+pub(crate) fn resolve_abs(a: &str) -> alloc::string::String {
     if a.starts_with('/') {
         a.to_string()
     } else {

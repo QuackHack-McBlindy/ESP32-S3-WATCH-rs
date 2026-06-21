@@ -11,42 +11,22 @@
 pub enum WifiCommand {
     Enable,
     Disable,
+    Scan,
 }
 
 pub static WIFI_CMD: embassy_sync::channel::Channel<
     embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
     WifiCommand,
-    1,
+    3,
 > = embassy_sync::channel::Channel::new();
+
+pub static SCAN_RESULTS: embassy_sync::mutex::Mutex<
+    embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
+    heapless::Vec<esp_radio::wifi::ap::AccessPointInfo, 16>,
+> = embassy_sync::mutex::Mutex::new(heapless::Vec::new());
+
+
 // ───────────────────────────────────────────────────────────────────────
-
-/// TOGGLE WI‑FI ON/OFF
-pub async fn toggle_wifi() {
-    let current = crate::load!(crate::state::WIFI_STATE);
-    if current { // TURN IT OFF
-        crate::base::wifi::WIFI_CMD.send(crate::base::wifi::WifiCommand::Disable).await;
-        crate::store!(crate::state::WIFI_STATE, false);
-        defmt::info!("Wi‑Fi disabled");
-    } else { // TURN IT ON
-        crate::base::wifi::WIFI_CMD.send(crate::base::wifi::WifiCommand::Enable).await;
-        crate::store!(crate::state::WIFI_STATE, true);
-        defmt::info!("Wi‑Fi enabled");
-    }
-}
-
-pub fn toggle_wifi_now() {
-    let current = crate::load!(crate::state::WIFI_STATE);
-    if current {
-        let _ = WIFI_CMD.try_send(WifiCommand::Disable);
-        crate::store!(crate::state::WIFI_STATE, false);
-        defmt::info!("Wi‑Fi disabled (non‑async)");
-    } else {
-        let _ = WIFI_CMD.try_send(WifiCommand::Enable);
-        crate::store!(crate::state::WIFI_STATE, true);
-        defmt::info!("Wi‑Fi enabled (non‑async)");
-    }
-}
-
 // WIFI CONNECTION TASK
 #[embassy_executor::task]
 pub async fn connection(mut controller: esp_radio::wifi::WifiController<'static>) {
@@ -56,7 +36,7 @@ pub async fn connection(mut controller: esp_radio::wifi::WifiController<'static>
 
     // CHECK DEFAULT WIFI BOOT STATE
     let mut enabled = crate::load!(crate::state::WIFI_STATE);
-    if !enabled { defmt::info!("🛜 💤"); }
+    defmt::info!("🛜 💤");
 
     'outer: loop {
         // WAIT UNTIL ENABLED
@@ -97,7 +77,7 @@ pub async fn connection(mut controller: esp_radio::wifi::WifiController<'static>
                 
                 // STORE WIFI STATE
                 crate::store!(crate::state::WIFI_CONNECTED, true);
-                *crate::state::CONNECTED_SSID.lock().await = Some(ssid);
+                *crate::state::CONNECTED_SSID.lock().await = Some(heapless::String::try_from(ssid).unwrap());
 
                 // SUCCESS! MONITOR RSSI & WAIT FOR DISCONNECT OR Disable
                 loop {
@@ -145,6 +125,49 @@ pub async fn connection(mut controller: esp_radio::wifi::WifiController<'static>
                                     crate::store!(crate::state::WIFI_STATE, false);
                                     continue 'outer;
                                 }
+
+                                if matches!(cmd, WifiCommand::Scan) {
+                                    enabled = false;
+                                    crate::store!(crate::state::WIFI_CONNECTED, false);
+                                    crate::store!(crate::state::WIFI_STATE, false);
+                                    *crate::state::CONNECTED_SSID.lock().await = None;
+                                    defmt::info!("🛜 ❌ - DISCONNECTED! REASON: SCANNING FOR WIRELESS NETWORKS");
+                                    let scan_config = esp_radio::wifi::scan::ScanConfig::default()
+                                        .with_max(16);
+
+                                    if let Err(e) = controller.set_config(
+                                        &esp_radio::wifi::Config::Station(
+                                            esp_radio::wifi::sta::StationConfig::default(),
+                                        ),
+                                    ) { 
+                                        defmt::warn!("scan prep failed: {:?}", e);
+                                    } else {
+                                        match controller.scan_async(&scan_config).await {
+                                            Ok(results) => {
+                                                defmt::info!("found {} networks:", results.len());
+                                                {
+                                                    let mut guard = SCAN_RESULTS.lock().await;
+                                                    guard.clear();
+                                                    let _ = guard.extend_from_slice(&results);
+                                                }
+                                                for (i, ap) in results.iter().enumerate() {
+                                                    let ssid_str = ap.ssid.as_str();
+                                                    defmt::info!(
+                                                        "  {}: SSID: {}, Signal: {}, Auth: {:?}, Channel: {}",
+                                                        i + 1,
+                                                        ssid_str,
+                                                        ap.signal_strength,
+                                                        ap.auth_method,
+                                                        ap.channel,
+                                                    );
+                                                }
+                                            }
+                                            Err(e) => defmt::warn!("WiFi scan failed: {:?}", e),
+                                        }
+                                    }
+                                    // RETURN TO IDLE
+                                    continue 'outer;
+                                }
                             }
                         },
                     }
@@ -157,9 +180,9 @@ pub async fn connection(mut controller: esp_radio::wifi::WifiController<'static>
                 defmt::info!("🛜 ❌ - CONNECTION FAILED for {}: {:?}", ssid, e);
                 fail_count += 1;
 
-                if fail_count >= 2 {
+                if fail_count >= 3 {
                     defmt::info!(
-                        "WiFi - Switching to next credentials ({} failures)",
+                        "🛜 ⏭️ ... ({} failures)",
                         fail_count
                     );
                     fail_count = 0;
@@ -247,6 +270,7 @@ pub async fn network_ready_task(
     // WAIT FOR THE NETWORK LINK AND DHCP
     stack.wait_link_up().await;
     stack.wait_config_up().await;
+    crate::store!(crate::state::WIFI_CONNECTED, true);
 
     // GRAB IPV4 AND STORE IT
     embassy_time::Timer::after_millis(100).await;
@@ -268,7 +292,7 @@ pub async fn network_ready_task(
         {
             Ok(addrs) => break core::net::SocketAddr::from((addrs[0], backend_port)),
             Err(e) => {
-                defmt::info!("DNS LOOKUP ERROR: {}", e);
+                defmt::error!("DNS LOOKUP ERROR: {}", e);
                 embassy_time::Timer::after(embassy_time::Duration::from_secs(5)).await;
             }
         }
@@ -276,12 +300,97 @@ pub async fn network_ready_task(
 
     // SYNC RTC VIA NTP
     match crate::components::pcf85063a::ntp_sync(stack).await {
-        Ok(()) => defmt::info!("PCF85063A Synchronized"),
+        Ok(()) => defmt::debug!("PCF85063A Synchronized"),
         Err(e) => defmt::warn!("NTP sync failed: {}", e),
     }
+
+    // START THE WEBSERVER/API
+    tinyapi::SERVER_CMD.send(tinyapi::ServerCommand::Start).await;
+    crate::store!(crate::state::API_STATE, true);
+    // START SSH SERVER
+    crate::base::ssh::SSH_CMD.send(crate::base::ssh::SshCommand::Enable).await;
+    crate::store!(crate::state::SSH_STATE, true);
+    // ALLOW STREAMING AUDIO TO THE SPEAKER
+    yo_esp::STREAM_CMD.send(yo_esp::StreamCommand::Start).await;
+    crate::store!(crate::state::SPEAKER_ALLOW_STREAMING, true);
+    
+    yo_esp::play_ding().await;
 
 }
 
 
+// ───────────────────────────────────────────────────────────────────────
+// WIFI SCANNER
+//async fn do_scan(controller: &mut esp_radio::wifi::WifiController<'_>) {
+//    if let Err(e) = controller.set_config(
+//        &esp_radio::wifi::Config::Station(esp_radio::wifi::sta::StationConfig::default()),
+//    ) {
+//        defmt::warn!("Failed to set config for scan: {:?}", e);
+//        return;
+//    }
+
+//    let scan_config = esp_radio::wifi::scan::ScanConfig::default()
+//        .with_max(16);
+//    match controller.scan_async(&scan_config).await {
+//        Ok(results) => {
+//            defmt::info!("Found {} networks:", results.len());
+            // Store for public access
+//            {
+//                let mut guard = SCAN_RESULTS.lock().await;
+//                guard.clear();
+                // extend_from_slice is a method of heapless::Vec
+//                guard.extend_from_slice(&results).ok();
+//            }
+//            for (i, ap) in results.iter().enumerate() {
+                // Use the public as_str() method on Ssid
+//                let ssid_str = ap.ssid.as_str();
+//                defmt::info!(
+//                    "  {}: SSID: {}, Signal: {}, Auth: {:?}, Channel: {}",
+//                    i + 1,
+//                    ssid_str,
+//                    ap.signal_strength,
+//                    ap.auth_method,
+//                    ap.channel,
+//                );
+//            }
+//        }
+//        Err(e) => {
+//            defmt::warn!("WiFi scan failed: {:?}", e);
+//        }
+//    }
+//}
+
+// ───────────────────────────────────────────────────────────────────────
+// PUBLIC HELPERS
+
+// TOGGLE WI‑FI ON/OFF
+pub async fn toggle_wifi() {
+    let current = crate::load!(crate::state::WIFI_STATE);
+    if current { // TURN IT OFF
+        crate::base::wifi::WIFI_CMD.send(crate::base::wifi::WifiCommand::Disable).await;
+        crate::store!(crate::state::WIFI_STATE, false);
+        defmt::info!("Wi‑Fi disabled");
+    } else { // TURN IT ON
+        crate::base::wifi::WIFI_CMD.send(crate::base::wifi::WifiCommand::Enable).await;
+        crate::store!(crate::state::WIFI_STATE, true);
+        defmt::info!("Wi‑Fi enabled");
+    }
+}
+
+pub fn toggle_wifi_now() {
+    let current = crate::load!(crate::state::WIFI_STATE);
+    if current {
+        let _ = WIFI_CMD.try_send(WifiCommand::Disable);
+        crate::store!(crate::state::WIFI_STATE, false);
+        defmt::info!("Wi‑Fi disabled (non‑async)");
+    } else {
+        let _ = WIFI_CMD.try_send(WifiCommand::Enable);
+        crate::store!(crate::state::WIFI_STATE, true);
+        defmt::info!("Wi‑Fi enabled (non‑async)");
+    }
+}
+
 // HELPER SLEEP
 pub async fn sleep(millis: u64) { embassy_time::Timer::after(embassy_time::Duration::from_millis(millis)).await; }
+
+

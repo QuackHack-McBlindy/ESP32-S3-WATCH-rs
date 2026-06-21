@@ -6,3 +6,4 @@ pub mod media;
 pub mod upload;
 pub mod download;
 pub mod shell;
+pub mod weather;
