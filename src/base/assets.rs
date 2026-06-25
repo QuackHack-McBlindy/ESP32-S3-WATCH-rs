@@ -117,6 +117,16 @@ pub const SETTINGS_SPEAKER_PNG: &[u8] = include_bytes!(concat!(
 ));
 
 
+pub const SETTINGS_VPN_ON_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/shield-on.png"
+));
+
+pub const SETTINGS_VPN_OFF_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/apps/settings/shield-off.png"
+));
+
 // ───────────────────────────────────────────────────────────────────────
 // BATTERY
 pub const SETTINGS_BATTERY_WARNING_PNG: &[u8] = include_bytes!(concat!(

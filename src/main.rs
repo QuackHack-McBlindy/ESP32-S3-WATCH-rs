@@ -58,6 +58,7 @@ pub enum DisplayCommand {
 
 
 // SHARED RESOURCES
+static WG_CONFIG: static_cell::StaticCell<crate::base::wireguard::WgConfig> = static_cell::StaticCell::new();
 pub static TOUCH_CHANNEL: embassy_sync::channel::Channel<embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex, crate::components::ft3168::SwipeDirection, 5> = embassy_sync::channel::Channel::new();
 pub static ES7210: critical_section::Mutex<core::cell::RefCell<Option<es7210::Es7210>>> =
     critical_section::Mutex::new(core::cell::RefCell::new(None));
@@ -70,7 +71,11 @@ pub static PMU: critical_section::Mutex<core::cell::RefCell<Option<crate::compon
 pub static AMP_PIN: critical_section::Mutex<core::cell::RefCell<core::option::Option<esp_hal::gpio::Output<'static>>>> = 
     critical_section::Mutex::new(core::cell::RefCell::new(core::option::Option::None));
 pub static DISPLAY_CMD: embassy_sync::channel::Channel<embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex, DisplayCommand, 1> = embassy_sync::channel::Channel::new();
-
+static mut VPN_STACK: Option<&'static embassy_net::Stack<'static>> = None;
+pub static VPN_STACK_READY: embassy_sync::signal::Signal<
+    embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
+    (),
+> = embassy_sync::signal::Signal::new();
 
 // ───────────────────────────────────────────────────────────────────────
 // CONSTRUCT THE VOICE HANDLER
@@ -334,11 +339,13 @@ async fn display_task(
                                     crate::gui::pages::Page::SettingsCpu   => crate::gui::options::cpu::draw(&mut fb),
                                     crate::gui::pages::Page::SettingsSleep => crate::gui::options::sleep::draw(&mut fb),
                                     crate::gui::pages::Page::SettingsSsh   => crate::gui::options::ssh::draw(&mut fb),
+                                    crate::gui::pages::Page::SettingsVpn   => crate::gui::options::vpn::draw(&mut fb),
                                     crate::gui::pages::Page::SettingsInfo  => crate::gui::options::info::draw(&mut fb),
                                     // SPECIAL PAGES
                                     crate::gui::pages::Page::Call      => crate::gui::call::draw(&mut fb),
                                     crate::gui::pages::Page::Text      => crate::gui::text::draw(&mut fb),
                                     crate::gui::pages::Page::TextInput => crate::gui::input::draw(&mut fb),
+                                    crate::gui::pages::Page::Gallery   => crate::gui::gallery::draw(&mut fb),
                                     _ => {}
                                 }
 
@@ -363,8 +370,8 @@ async fn display_task(
                 ol.current_offset != ol.target_offset
             });
             if overlay_animating {
-                crate::dirty!(); // SLIDE IN/OUT ANIMATION SPEED = 60
-                crate::gui::control_center::animate(60);
+                crate::dirty!();
+                crate::gui::control_center::animate(22); // PIXELS PER-FRAME
                 last_page = None;
             }
 
@@ -376,7 +383,7 @@ async fn display_task(
             });
             if is_media_page {
                 // SPLIT MEDIA PLAYER IN HALF & SHOW PLAYLIST
-                crate::gui::media_player::animate_split(75); // ANIMATION SPEED
+                crate::gui::media_player::animate_split(22); // PIXELS PER-FRAME
                 if split_animating {
                     crate::dirty!();
                     last_page = None;
@@ -384,7 +391,7 @@ async fn display_task(
             }
             // PLAYLIST SCROLLING
             if is_media_page && crate::gui::media_player::is_split_open() {
-                crate::gui::media_player::animate_playlist_scroll(12); // PIXELS PER-FRAME
+                crate::gui::media_player::animate_playlist_scroll(20); // PIXELS PER-FRAME
                 let scroll_active = critical_section::with(|cs| {
                     let s = crate::gui::media_player::PLAYLIST_SCROLL.borrow_ref(cs);
                     s.offset != s.target
@@ -397,7 +404,7 @@ async fn display_task(
 
             // INFO PAGE (SETTINGS) SCROLLING
             if crate::gui::pages::current_page() == crate::gui::pages::Page::SettingsInfo {
-                crate::gui::options::info::animate_info(60); // SCROLL SPEED
+                crate::gui::options::info::animate_info(30); // SCROLL SPEED
                 if critical_section::with(|cs| {
                     let scroll = crate::gui::options::info::INFO_SCROLL.borrow_ref(cs);
                     scroll.current_offset != scroll.target_offset
@@ -417,7 +424,7 @@ async fn display_task(
                 || split_animating
                 || playlist_scrolling
             {
-                16   // SMOOTH ANIMATIONS
+                1    // SMOOTH ANIMATIONS
             } else if crate::gui::pages::current_page() == crate::gui::pages::Page::Apps {
                 16   // SMOOTH SCROLLING ON LAUNCHER
             } else if crate::gui::pages::current_page() == crate::gui::pages::Page::MediaPlayer {
@@ -607,6 +614,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 73744);
 
     let mut storage = esp_storage::FlashStorage::new();
+
 
     // TTF PARSING IS HEAVY? - NOT SURE BUT LET'S CACHE THE BOLD FONT USED EVERYWHERE ANYWAY. 
     critical_section::with(|_| unsafe {
@@ -892,19 +900,43 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
 
 
     // ───────────────────────────────────────────────────────────────────────
+    // FETCH WIREGUARD CONFIGURATION
+    let wg_conf = crate::base::wireguard::parse_wg_conf()
+        .expect("Invalid wg-client.conf");
+    let wg_conf = WG_CONFIG.init(wg_conf);
+
+    // CREATE WIREGUARD CHANNEL & SPLIT
+    let (wg_device, wg_runner) = crate::base::wireguard::init_wg_channel();
+
+
+    // ───────────────────────────────────────────────────────────────────────
     // SETUP WIFI (ON LOW-POWER MODE)
     let backend_port: u16 = crate::state::BACKEND_TCP_PORT_STR.parse().expect("Invalid BACKEND_TCP_PORT");    
-    let stack = base::wifi::init(&spawner, peripherals.WIFI, backend_port).await;
+    let wifi_stack = base::wifi::init(&spawner, peripherals.WIFI, backend_port, wg_device, wg_conf).await;
         
     // WIFI CONFIGURED TO SIT IDLE AND AWAIT START/STOP COMMANDS
     // VOICE COMMUNICATION REQUIRES LOCAL NETWORK - START IT UP! (CAN BE TOGGLED AT RUNTIME)
     crate::base::wifi::WIFI_CMD.send(crate::base::wifi::WifiCommand::Enable).await;
     crate::store!(crate::state::WIFI_STATE, true);
 
+    let wg_rng = esp_hal::rng::Rng::new();
+    // START THE VPN TASK
+    // (IDLE, AUTO ENABLED WHEN WIFI CONNECTION ESTABLISHED)
+    crate::spawn!(spawner, crate::base::wireguard::wireguard_task(
+        wifi_stack,
+        wg_conf,
+        wg_rng,
+        wg_runner
+    ));   
+    
+    VPN_STACK_READY.wait().await;
+    let vpn_stack: &'static embassy_net::Stack<'static> = unsafe {
+        VPN_STACK.expect("VPN stack not initialized")
+    };
+
     // ───────────────────────────────────────────────────────────────────────
     // I2S AUDIO SETUP 
     // CREATE RX & TX DMA BUFFERS
-    //let (rx_buffer, rx_descriptors, tx_buffer, tx_descriptors) = esp_hal::dma_buffers!(crate::state::I2S_BUFFER_SIZE);
     let (rx_buffer, rx_descriptors, tx_buffer, tx_descriptors) = esp_hal::dma_circular_buffers!(crate::state::I2S_BUFFER_SIZE);
 
     // CONFIGURE THE I2S PERIPHERAL
@@ -973,6 +1005,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
 
     // ───────────────────────────────────────────────────────────────────────
     // TASKS
+
   
     // SPEAKER TASK (WRITES AUDIO DATA INTO PIPE + KEEP CLOCKS UP FOR MIC)
     // TASK STARTS IDLE AND WAITS FOR A COMMAND 
@@ -981,28 +1014,28 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     yo_esp::SPEAKER_CMD.send(yo_esp::SpeakerCommand::Start).await;
     crate::store!(crate::state::SPEAKER_TASK_STATE, true);
     
-    // STREAMING SPEAKER TASK (STREAM AUDIO TO THE SPEAKER OVER TCP PORT 12345)
+    // STREAMING SPEAKER TASK (STREAM INCOMING AUDIO TO THE SPEAKER OVER TCP PORT 12345)
     // (IDLE - SEND START/STOP COMMAND)
-    // AUTO STARTED ON WIFI CONNECTION
-    crate::spawn!(spawner, yo_esp::stream_speaker(stack, backend_port));
+    // AUTO STARTED ON VPN CONNECTION
+    crate::spawn!(spawner, yo_esp::stream_speaker(vpn_stack, backend_port));
         
     // MICROPHONE TASK (STREAMS AUDIO TO BACKEND OVER TCP PORT 12345)
     // (SLEEPS UNLESS WAKE-WORD ENABLED/BUTTON IS PRESSED)
-    crate::spawn!(spawner, yo_esp::audio_capture_task(i2s_rx, stack, crate::state::BACKEND_TCP_HOST, backend_port, "esp", handler));
+    crate::spawn!(spawner, yo_esp::audio_capture_task(i2s_rx, vpn_stack, crate::state::BACKEND_TCP_HOST, backend_port, "esp", handler));
 
     // START SSHD ON PORT 2222
     // (IDLE - SEND START/STOP COMMAND)
-    // AUTO STARTED ON WIFI CONNECTION
+    // AUTO STARTED ON VPN CONNECTION
     // USES ED25519 PUBLIC KEY AUTHENTICATION
-    crate::spawn!(spawner, crate::base::ssh::sshd_task(stack));
+    crate::spawn!(spawner, crate::base::ssh::sshd_task(vpn_stack));
         
     // HTTP API & WEB SERVER TASK (PORT 80)
     // (IDLE - SEND START/STOP COMMAND)
-    // AUTO STARTED ON WIFI CONNECTION
-    crate::spawn!(spawner, tinyapi::web_server_task(stack));
+    // AUTO STARTED ON VPN CONNECTION
+    crate::spawn!(spawner, tinyapi::web_server_task(vpn_stack));
      
     // START TINYWEATHER TASK IN THE BACKGROUND
-    crate::spawn!(spawner, crate::applications::tinyweather::weather_task(*stack));
+    crate::spawn!(spawner, crate::applications::tinyweather::weather_task(vpn_stack));
     
     // START THE MEDIA PLAYER TASK
     crate::spawn!(spawner, crate::applications::media_player::playback_task(spawner));
@@ -1036,7 +1069,7 @@ async fn main(spawner: embassy_executor::Spawner) -> ! {
     // SLOW IT DOWN!!
     //crate::components::frequency::set_cpu_mhz(160);
     //crate::store!(crate::state::CPU_FREQ, 160);
-    crate::delay_s!(2);    
+    crate::delay_s!(2);   
  
 
     // MAIN LOOP

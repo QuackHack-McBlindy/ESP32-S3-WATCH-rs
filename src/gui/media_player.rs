@@ -154,7 +154,7 @@ pub fn set_hit_areas_closed() {
 // SPLIT ANIMATION STATE
 pub struct MediaSplit {
     pub target_offset: i32,
-    pub current_offset: i32,
+    pub current_offset: i32,    
 }
 
 pub(crate) static MEDIA_SPLIT: critical_section::Mutex<core::cell::RefCell<MediaSplit>> =

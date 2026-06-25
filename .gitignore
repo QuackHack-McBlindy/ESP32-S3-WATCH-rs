@@ -1,3 +1,7 @@
+.wg-client.conf
+./.wg-client.conf
+wg-client.conf
+./wg-client.conf
 dump/
 **/dump/
 .env

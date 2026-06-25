@@ -3,3 +3,4 @@
 pub mod append;
 pub mod remove;
 pub mod clear;
+pub mod fav;

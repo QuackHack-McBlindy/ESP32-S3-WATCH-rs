@@ -10,3 +10,4 @@ pub mod shell;
 pub mod ssh;
 pub mod rng;
 pub mod keyboard;
+pub mod wireguard;

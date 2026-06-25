@@ -40,7 +40,6 @@ pub fn handle_sensor(req: tinyapi::Request<'_>) -> tinyapi::Response {
 }
 
 // GET /API/SENSORS (SHOWS ALL SENSOR VALUES IN ONE CALL FORMATTED AS JSON)
-// GET /API/SENSORS (SHOWS ALL SENSOR VALUES IN ONE CALL FORMATTED AS JSON)
 pub fn handle_sensors(_req: tinyapi::Request<'_>) -> tinyapi::Response {
     // BATTERY
     let battery_percent = crate::load!(crate::state::BATTERY_PERCENT);
@@ -81,6 +80,7 @@ pub fn handle_sensors(_req: tinyapi::Request<'_>) -> tinyapi::Response {
 
     // SERVICES
     let ssh_state = crate::load!(crate::state::SSH_STATE);
+    let vpn_state = crate::load!(crate::state::WG_STATE);
 
     // TIME
     let uptime_secs = crate::load!(crate::state::UPTIME_SECS);
@@ -109,7 +109,7 @@ pub fn handle_sensors(_req: tinyapi::Request<'_>) -> tinyapi::Response {
 
 
     let response_str = alloc::format!(
-        "{{\"battery_percent\":{},\"battery_voltage\":{},\"battery_charging\":{},\"battery_need_charging\":{},\"battery_full\":{},\"battery_usb_connected\":{},\"display_state\":{},\"display_timeout\":{},\"rssi\":{},\"mic_volume\":{},\"speaker_volume\":{},\"brightness\":{},\"ip\":\"{}\",\"uptime\":\"{}\",\"time\":\"{}\",\"firmware\":\"{}\",\"mic_muted\":{},\"speaker_muted\":{},\"speaker_task_state\":{},\"speaker_allow_streaming\":{},\"amplifier_state\":{},\"sd_ready\":{},\"media_is_playing\":{},\"low_power_mode\":{},\"cpu_freq\":{},\"powerdown_timeout\":{},\"ssh_state\":{},\"media\":\"Nothing playing\"}}",
+        "{{\"battery_percent\":{},\"battery_voltage\":{},\"battery_charging\":{},\"battery_need_charging\":{},\"battery_full\":{},\"battery_usb_connected\":{},\"display_state\":{},\"display_timeout\":{},\"rssi\":{},\"mic_volume\":{},\"speaker_volume\":{},\"brightness\":{},\"ip\":\"{}\",\"uptime\":\"{}\",\"time\":\"{}\",\"firmware\":\"{}\",\"mic_muted\":{},\"speaker_muted\":{},\"speaker_task_state\":{},\"speaker_allow_streaming\":{},\"amplifier_state\":{},\"sd_ready\":{},\"media_is_playing\":{},\"low_power_mode\":{},\"cpu_freq\":{},\"powerdown_timeout\":{},\"ssh_state\":{},\"vpn_state\":{},\"media\":\"Nothing playing\"}}",
         battery_percent,
         battery_voltage,
         battery_charging,
@@ -136,7 +136,8 @@ pub fn handle_sensors(_req: tinyapi::Request<'_>) -> tinyapi::Response {
         low_power_mode,
         cpu_freq,
         powerdown_timeout,
-        ssh_state
+        ssh_state,
+        vpn_state
     );
 
     tinyapi::Response::text(&response_str)

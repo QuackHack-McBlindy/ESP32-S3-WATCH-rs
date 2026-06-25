@@ -8,10 +8,15 @@
 // WIFI_CMD.send(WifiCommand::Disable).await;
 // ───────────────────────────────────────────────────────────────────────
 
+use embassy_net_driver_channel as ch;
+use crate::base::wireguard::WgConfig;
+use embassy_net_driver_channel::{self, Device};
+
 pub enum WifiCommand {
     Enable,
     Disable,
     Scan,
+    Connect { ssid: heapless::String<32>, password: heapless::String<64> },
 }
 
 pub static WIFI_CMD: embassy_sync::channel::Channel<
@@ -216,6 +221,8 @@ pub async fn init(
     spawner: &embassy_executor::Spawner,
     wifi_peripheral: esp_hal::peripherals::WIFI<'static>,
     backend_port: u16,
+    wg_device: Device<'static, 1420>,
+    wg_conf: &'static WgConfig,
 ) -> &'static embassy_net::Stack<'static> {
 
     // 1: CREATE WI‑FI CONTROLLER AND STATION INTERFACE
@@ -247,7 +254,7 @@ pub async fn init(
     // ───────────────────────────────────────────────────────────────────────
     // 4: SPAWN A BACKGROUND TASK THAT COMPLETES NETWORK SETUP
     // WHEN WIFI IS ACTUALLY ENABLED AND CONNECTED.
-    crate::spawn!(spawner, network_ready_task(*spawner, stack, backend_port));
+    crate::spawn!(spawner, network_ready_task(*spawner, stack, backend_port, wg_device, wg_conf));
     stack
 }
 
@@ -259,6 +266,8 @@ pub async fn network_ready_task(
     spawner: embassy_executor::Spawner,
     stack: &'static embassy_net::Stack<'static>,
     backend_port: u16,
+    wg_device: Device<'static, 1420>,
+    wg_conf: &'static WgConfig, 
 ) {
     loop {
         let cmd = WIFI_CMD.receive().await;
@@ -272,6 +281,38 @@ pub async fn network_ready_task(
     stack.wait_config_up().await;
     crate::store!(crate::state::WIFI_CONNECTED, true);
 
+
+    // BUILD 2ND embassy-net STACK THAT SITS ON TOP OF THE WG DEVICE
+    let vpn_config = embassy_net::Config::ipv4_static(embassy_net::StaticConfigV4 {
+        address: wg_conf.address,
+        gateway: Some(wg_conf.address.address()),
+        dns_servers: Default::default(),
+    });
+    
+    let vpn_resources = crate::mk_static!(
+        embassy_net::StackResources<12>,
+        embassy_net::StackResources::<12>::new()
+    );
+
+    let mut rng = esp_hal::rng::Rng::new();
+    let vpn_seed: u64 = (u64::from(rng.random())) << 32 | u64::from(rng.random());
+    let (vpn_stack, vpn_runner) =
+        embassy_net::new(wg_device, vpn_config, vpn_resources, vpn_seed);
+
+    let vpn_stack = crate::mk_static!(
+        embassy_net::Stack<'static>,
+        vpn_stack
+    );
+    unsafe { crate::VPN_STACK = Some(vpn_stack); }
+    crate::VPN_STACK_READY.signal(());
+
+    crate::spawn!(spawner, crate::base::wireguard::vpn_runner_task(vpn_runner));
+
+    // ENABLE VPN
+    crate::base::wireguard::WG_CMD.send(crate::base::wireguard::WgCommand::Enable).await;
+    crate::store!(crate::state::WG_STATE, true);
+    
+
     // GRAB IPV4 AND STORE IT
     embassy_time::Timer::after_millis(100).await;
     for _ in 0..10 {
@@ -283,6 +324,8 @@ pub async fn network_ready_task(
         }
         embassy_time::Timer::after_millis(100).await;
     }
+
+
 
     // RESOLVE BACKEND ADDRESS
     let remote_addr: core::net::SocketAddr = loop {
@@ -390,7 +433,11 @@ pub fn toggle_wifi_now() {
     }
 }
 
-// HELPER SLEEP
+// HELPERS
 pub async fn sleep(millis: u64) { embassy_time::Timer::after(embassy_time::Duration::from_millis(millis)).await; }
+
+pub async fn scan() {
+    WIFI_CMD.send(WifiCommand::Scan).await;
+}
 
 

@@ -17,6 +17,7 @@ pub mod settings;
 pub mod options;
 pub mod weather;
 pub mod input;
+pub mod gallery;
 
 
 // ───────────────────────────────────────────────────────────────────────
@@ -80,15 +81,12 @@ pub enum TouchAction {
     OpenSettings,
     OpenDuckTv,
     OpenDuckCloud,
-    OpenHouse,
     // CALL PAGE
     CallAccept,
     CallDecline,
     // TEXT INPUT PAGE
     TextInputCacel,
     TextInputOk,
-    // HOUSE PAGE
-    ZigbeeToggleLights,
     // MEDIA PLAYER PAGE
     MediaPrev,
     MediaPlayPause,
@@ -99,6 +97,7 @@ pub enum TouchAction {
     // SETTINGS
     SettingsToggle,
     SettingsToggleWifi,
+    SettingsToggleWifiScan,
     SettingsToggleBle,    
     SettingsToggleApi,
     SettingsToggleAmp,
@@ -106,6 +105,7 @@ pub enum TouchAction {
     SettingsToggleSpeaker,
     SettingsToggleStreaming,
     SettingsToggleSsh,
+    SettingsToggleVpn,
     SettingsToggleWakeWord,
     SettingsToggleDisplay,            
 }

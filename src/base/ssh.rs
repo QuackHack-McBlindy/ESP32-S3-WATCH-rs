@@ -348,3 +348,18 @@ fn get_host_key() -> &'static sunset::SignKey {
         }
     })
 }
+
+// ───────────────────────────────────────────────────────────────────────
+// TOGGLE ON/OFF
+pub async fn toggle_ssh() {
+    let current = crate::load!(crate::state::SSH_STATE);
+    if current { // TURN IT OFF
+        crate::base::ssh::SSH_CMD.send(crate::base::ssh::SshCommand::Disable).await;
+        crate::store!(crate::state::SSH_STATE, false);
+        defmt::info!("SSH disabled");
+    } else { // TURN IT ON
+        crate::base::ssh::SSH_CMD.send(crate::base::ssh::SshCommand::Enable).await;
+        crate::store!(crate::state::SSH_STATE, true);
+        defmt::info!("SSH enabled");
+    }
+}

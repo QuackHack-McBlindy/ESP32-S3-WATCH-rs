@@ -210,6 +210,8 @@ crate::init_bool!(SPEAKER_TASK_STATE, true);
 crate::init_bool!(SPEAKER_ALLOW_STREAMING, false);
 crate::init_bool!(AMPLIFIER_STATE, false);
 crate::init_bool!(WAKE_WORD_ENABLED, false);
+crate::init_bool!(INTERCOM_STATE, false);
+
 
 // MEDIA
 crate::init_bool!(MEDIA_IS_PLAYING, false);

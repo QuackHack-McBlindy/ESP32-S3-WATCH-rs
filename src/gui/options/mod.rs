@@ -14,4 +14,5 @@ pub mod display;
 pub mod timeout;
 pub mod sleep;
 pub mod ssh;
+pub mod vpn;
 pub mod info;

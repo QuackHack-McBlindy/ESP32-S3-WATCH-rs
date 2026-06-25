@@ -272,6 +272,11 @@ pub async fn clear() {
     let _ = PLAYBACK_CMD.send(PlaybackCommand::Clear).await;
 }
 
+// PLAY FAVOURITES
+pub async fn play_favourites() {
+    if load_playlist_from_sd("/Music/favourit.m3u").is_ok() { let _ = PLAYBACK_CMD.send(PlaybackCommand::Play).await; }
+}
+
 // ───────────────────────────────────────────────────────────────────────
 // PLAY NOW (SYNCHRONOUS – NON‑BLOCKING)
 pub fn play_now() {
@@ -407,6 +412,16 @@ pub async fn playback_task(_spawner: embassy_executor::Spawner) {
                         if crate::load!(crate::state::SPEAKER_VOLUME) == 0 {
                             crate::set_speaker_volume(65);
                         }
+                        // IF WE ARE PAUSED & HAVE AN OPEN FILE, JUST RESUME PLAYBACK
+                        if state == PlaybackState::Paused && current_file.is_some() {
+                            state = PlaybackState::Playing;
+                            critical_section::with(|cs| {
+                                PLAYER.borrow_ref_mut(cs).state = PlaybackState::Playing;
+                            });
+                            crate::store!(crate::state::MEDIA_IS_PLAYING, true);
+                            continue; // JUMP BACK TO THE DECODING LOOP
+                        }
+
                         // START PLAYING PLAYLIST (IF PLAYLIST IS EMPTY IT WILL GENERATE ONE)
                         let (track_title, track_path) = current_track_info();
                         defmt::info!("🎵 Playing: {}", track_title.as_str());

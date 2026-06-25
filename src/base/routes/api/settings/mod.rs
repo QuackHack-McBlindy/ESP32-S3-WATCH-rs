@@ -9,4 +9,5 @@ pub mod wifi;
 pub mod cpu;
 pub mod sleep;
 pub mod ssh;
+pub mod vpn;
 pub mod power;

@@ -22,7 +22,7 @@ pub fn handle_touch(x: i32, y: i32) -> Option<crate::gui::TouchAction> {
                 crate::store!(crate::state::WIFI_STATE, new_state);
 
                 return core::option::Option::Some(
-                    crate::gui::TouchAction::SettingsToggle,
+                    crate::gui::TouchAction::SettingsToggleWifi,
                 );
             }
         }
@@ -148,7 +148,7 @@ pub fn draw(fb: &mut crate::components::framebuffer::Framebuffer) {
         y: toggle_top,
         width: track_w as u32,
         height: track_h as u32,
-        action: crate::gui::TouchAction::SettingsToggle,
+        action: crate::gui::TouchAction::SettingsToggleWifi,
     };
     critical_section::with(|_cs| unsafe {
         core::ptr::addr_of_mut!(HIT_AREA).write(core::option::Option::Some(area));

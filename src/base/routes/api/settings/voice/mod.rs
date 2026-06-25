@@ -2,3 +2,4 @@
 
 pub mod state;
 pub mod wakeword;
+pub mod intercom;

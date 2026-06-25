@@ -64,6 +64,9 @@ pub async fn init_routes() {
     // ───────────────────────────────────────────────────────────────────────
     // /API/MEDIA (GET)
 
+    // GALLERY
+    tinyapi::register_async_route("/api/media/gallery/{path}", crate::base::routes::api::media::gallery::gallery_handler).await;
+
     // PREV
     tinyapi::register_async_route("/api/media/prev", crate::base::routes::api::media::prev::prev_track_handler).await;
 
@@ -92,6 +95,9 @@ pub async fn init_routes() {
     tinyapi::register_route("/api/media/playlist/clear", crate::base::routes::api::media::playlist::clear::clear_playlist_handler).await;  
 
 
+    // PLAYLIST/FAV (PLAY FAVOURITE SONGS)
+    tinyapi::register_async_route("/api/media/playlist/fav", crate::base::routes::api::media::playlist::fav::fav_playlist_handler).await;  
+    
 
     // ───────────────────────────────────────────────────────────────────────
     // /API/SETTINGS/API (GET)
@@ -105,6 +111,13 @@ pub async fn init_routes() {
 
     // ON/OFF/TOGGLE
     tinyapi::register_async_route("/api/settings/ssh/{value}", crate::base::routes::api::settings::ssh::state::ssh_handler).await;
+
+
+    // ───────────────────────────────────────────────────────────────────────
+    // /API/SETTINGS/VPN (GET)
+
+    // ON/OFF/TOGGLE
+    tinyapi::register_async_route("/api/settings/vpn/{value}", crate::base::routes::api::settings::vpn::state::vpn_handler).await;
 
 
     // ───────────────────────────────────────────────────────────────────────
@@ -174,7 +187,10 @@ pub async fn init_routes() {
         
     // WAKEWORD (on/off) 
     tinyapi::register_async_route("/api/settings/voice/wakeword/{value}", crate::base::routes::api::settings::voice::wakeword::wake_word_handler).await;
-    
+
+    // INTERCOM 
+    tinyapi::register_async_route("/api/settings/voice/intercom/{value}", crate::base::routes::api::settings::voice::intercom::intercom_handler).await;
+      
 
     // ───────────────────────────────────────────────────────────────────────
     // /API/SETTINGS/DISPLAY (GET)

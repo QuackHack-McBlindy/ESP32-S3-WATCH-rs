@@ -471,10 +471,10 @@ pub static WEATHER_CMD: embassy_sync::channel::Channel<embassy_sync::blocking_mu
 static FETCHING: AtomicBool = AtomicBool::new(false);
 
 #[embassy_executor::task]
-pub async fn weather_task(stack: embassy_net::Stack<'static>) {
+pub async fn weather_task(stack: &'static embassy_net::Stack<'static>) {
     loop {
         WEATHER_CMD.receive().await;
-        get_current_weather(stack).await;
+        get_current_weather(*stack).await;
         crate::delay_s!(3);
         crate::dirty!();
         crate::delay_s!(45);

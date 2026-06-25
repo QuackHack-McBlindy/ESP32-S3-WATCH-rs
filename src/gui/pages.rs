@@ -53,6 +53,7 @@ crate::define_pages! {
     Call      = 100, is_settings: false, prev: None, next: None;
     Text      = 101, is_settings: false, prev: None, next: None;
     TextInput = 102, is_settings: false, prev: None, next: None;
+    Gallery   = 103, is_settings: false, prev: None, next: None;
 
     // SETTINGS SUBPAGES
     SettingsWifi    = 140, is_settings: true, prev: SettingsInfo,    next: SettingsRssi,    tap: wifi;
@@ -68,8 +69,9 @@ crate::define_pages! {
     SettingsAmp     = 150, is_settings: true, prev: SettingsTimeout, next: SettingsCpu,    tap: amplifier;
     SettingsCpu     = 151, is_settings: true, prev: SettingsAmp,     next: SettingsSleep,  swipe: cpu;
     SettingsSleep   = 152, is_settings: true, prev: SettingsCpu,     next: SettingsSsh,   swipe: sleep;
-    SettingsSsh     = 153, is_settings: true, prev: SettingsSleep,    next: SettingsInfo,   tap: ssh;
-    SettingsInfo    = 154, is_settings: true, prev: SettingsSsh,   next: SettingsWifi,   swipe: info;
+    SettingsSsh     = 153, is_settings: true, prev: SettingsSleep,    next: SettingsVpn,    tap: ssh;
+    SettingsVpn     = 154, is_settings: true, prev: SettingsSsh,    next: SettingsInfo,   tap: vpn;    
+    SettingsInfo    = 155, is_settings: true, prev: SettingsVpn,   next: SettingsWifi,   swipe: info;
 
 }
 
@@ -215,37 +217,63 @@ async fn handle_page_tap(page: Page, x: u16, y: u16) {
             crate::gui::TouchAction::SettingsToggle => {
                 crate::base::wifi::toggle_wifi().await;
                 defmt::info!("Wifi TOGGLED");
-            },
+            }, // WIFI ON/OFF
+            crate::gui::TouchAction::SettingsToggleWifi => {
+                defmt::info!("WIFI TOGGLED");
+                crate::swap!(crate::state::WIFI_STATE);
+            }, // BLUETOOTH ON/OFF
             crate::gui::TouchAction::SettingsToggleBle => {
                 defmt::info!("BLE TOGGLED");
                 crate::swap!(crate::state::BLUETOOTH_STATE);
-            },
+            }, // API ON/OFF
             crate::gui::TouchAction::SettingsToggleApi => {
                 crate::base::routes::api::settings::api::off::toggle_api().await;
                 defmt::info!("API TOGGLED");
-            },
+            }, // MIC ON/OFF
             crate::gui::TouchAction::SettingsToggleMic => {
+                if crate::load!(crate::state::MIC_VOLUME) == 0 {
+                    crate::set_mic_gain(58);
+                    crate::store!(crate::state::MIC_MUTED, false);
+                } else {
+                    crate::set_mic_gain(0);
+                    crate::store!(crate::state::MIC_MUTED, true);
+                }
                 defmt::info!("MIC TOGGLED");
-            },
+            }, // SPEAKER ON/OFF
             crate::gui::TouchAction::SettingsToggleSpeaker => {
+                if crate::load!(crate::state::SPEAKER_VOLUME) == 0 {
+                    crate::set_speaker_volume(58);
+                    crate::store!(crate::state::SPEAKER_MUTED, false);
+                } else {
+                    crate::set_speaker_volume(0);
+                    crate::store!(crate::state::SPEAKER_MUTED, true);
+                }
                 defmt::info!("SPEAKER TOGGLED");
-            },
+            }, // WAKE WORD ON/OFF
             crate::gui::TouchAction::SettingsToggleWakeWord => {
                 defmt::info!("WAKE WORD TOGGLED");
                 crate::base::routes::api::settings::voice::wakeword::toggle_wake_word().await;
-            },
+            }, // DISPLAY ON/OFF
             crate::gui::TouchAction::SettingsToggleDisplay => {
                 defmt::info!("DISPLAY TOGGLED");
                 crate::swap!(crate::state::DISPLAY_STATE);
-            },
+            }, // AUDIO STREAMING ON/OFF
             crate::gui::TouchAction::SettingsToggleStreaming => {
                 crate::base::routes::api::settings::speaker::stream::toggle_stream().await;
                 defmt::info!("STREAMING TOGGLED");
-            },
+            }, // AMPLIFIER ON/OFF
             crate::gui::TouchAction::SettingsToggleAmp => {
                 crate::base::routes::api::settings::speaker::amp::toggle_amp();
                 defmt::info!("AMP TOGGLED");
-            },
+            }, // SSH SERVER ON/OFF         
+            crate::gui::TouchAction::SettingsToggleSsh => {
+                crate::base::ssh::toggle_ssh().await;
+                defmt::info!("SSH TOGGLED");
+            }, // VPN CLIENT ON/OFF
+            crate::gui::TouchAction::SettingsToggleVpn => {
+                crate::base::wireguard::toggle_vpn().await;
+                defmt::info!("VPN TOGGLED");
+            },            
             _ => {}
         }
         return;
@@ -274,7 +302,7 @@ async fn handle_page_tap(page: Page, x: u16, y: u16) {
                     // PLAYLIST DIRTY - REFRESH
                     crate::gui::media_player::invalidate_playlist();
                     // TAKE A BREATH & CLOSE THE SPLIT VIEW
-                    embassy_time::Timer::after(embassy_time::Duration::from_millis(150)).await;
+                    //embassy_time::Timer::after(embassy_time::Duration::from_millis(150)).await;
                     crate::gui::media_player::close_split();
                     // SKIP NORMAL HIT-AREA HANDLE
                     return;

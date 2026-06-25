@@ -180,12 +180,19 @@ Turn up volume & hit play.
 
 <a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings10.jpeg">
   <img src="resource/demo/settings10.jpeg" alt="Settings 10" width="148">
-</a>
+</a> <br>
 
 <a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings11.jpeg">
   <img src="resource/demo/settings11.jpeg" alt="Settings 11" width="148">
-</a> <br>
+</a>
 
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings12.jpeg">
+  <img src="resource/demo/settings12.jpeg" alt="Settings 12" width="148">
+</a>
+
+<a href="https://github.com/QuackHack-McBlindy/ESP32-S3-WATCH-rs/blob/main/resource/demo/settings13.jpeg">
+  <img src="resource/demo/settings13.jpeg" alt="Settings 13" width="148">
+</a> <br>
 
 **Settings (info pages (swipe up/down)**
 
@@ -256,7 +263,6 @@ I also prefer to have some of the extensive code as library crates, it can be us
 │   ├── 📂 es7210
 │   ├── 📂 es8311
 │   ├── 📂 tinyapi
-│   ├── 📂 tinytunnel
 │   └── 📂 yo-esp
 ├── 📂 gui
 ├── 📄 main.rs
@@ -287,7 +293,7 @@ Extend with more crazy ideas as they pop up. `ESP32-S3-WATCH-rs` is still under 
 - [x] Push-to-talk feature (more battery effecient)
 - [x] Media Player - Stream any audio to speaker (wav, mp3, flac, mp4, ...)
 - [x] Fuzzy search & play local media from the SD card. (with downsampling) 
-- [x] Intercom `ffmpeg -f alsa -i default -f s16le -ar 16000 -ac 2 - | nc <ESP_IP> 12345`
+- [x] Live bidirectional intercom with backend
 - [x] On-Device API
 - [x] On-Device WebServer & Web Media Player (with casting to Android TV)
 - [x] Control & start/pause any task from the GUI 
@@ -298,9 +304,9 @@ Extend with more crazy ideas as they pop up. `ESP32-S3-WATCH-rs` is still under 
 - [x] tinyWeather app - tap weather page to cycle displayed day (3-day forecast)
 - [x] Change CPU frequency at runtime/from GUI
 - [x] Automatic filesystem testing (cargo run --release --features sd-test)
+- [x] Image Gallery
 - [ ] Phone calls/text message (HFP)
-- [ ] Remember settings changes between boots/firmware updates
-- [ ] Secure network tunnel home (UDP)
+- [x] WireGuard™ VPN client for a secure network tunnel home (embassy-net)
 - [ ] Entire voice pipeline `no-std` 
 - [x] Backend: `yo`
 
@@ -434,6 +440,7 @@ curl http://<ESP_IP>/api/settings/display/brightness/75
 | `/api/download/file/music/{filename}` | Download a song from the SD card’s `/Music` directory |
 | `/api/download/file/share/{filename}` | Download any file from the `/share` directory of the SD card |
 | `/api/upload/file/music/{filename}` | Upload a song to the SD card’s `/Music` directory **Note: POST** |
+| `/api/media/gallery` | Draws `path` on the display. If no path is provided, the gallery is drawn. |
 | `/api/media/prev` | Sends `previous` command to the media player – plays previous track |
 | `/api/media/next` | Sends `next` command to the media player – plays next track |
 | `/api/media/play_pause` | Toggles play/pause |
@@ -443,6 +450,7 @@ curl http://<ESP_IP>/api/settings/display/brightness/75
 | `/api/media/playlist/add/{value}` | Add a song (exact filename/path) to the playlist |
 | `/api/media/playlist/remove/{value}` | Remove a song (exact filename/path) from the playlist |
 | `/api/media/playlist/clear` | Clear the entire temporary playlist |
+| `/api/media/playlist/fav` | Plays favourite playlist. Add/remove with heart. |
 | `/api/settings/api/off` | Stops the internal API (including webserver). **Note: use GUI to turn back on** |
 | `/api/settings/ssh/{value}` | Enable/disable/toggle the SSH server (`on`, `off`, `toggle`) |
 | `/api/settings/sleep` | Enter deep sleep immediately |
@@ -459,6 +467,8 @@ curl http://<ESP_IP>/api/settings/display/brightness/75
 | `/api/settings/speaker/play/ding` | Play a test “ding” sound on the speaker |
 | `/api/settings/voice/{value}` | Enable/disable/toggle the entire voice pipeline (`on`, `off`, `toggle`) |
 | `/api/settings/voice/wakeword/{value}` | Enable/disable wake‑word streaming (`on`, `off`, `enable`, `disable`) |
+| `/api/settings/voice/intercom/{value}` | Start/stop bidirectional live intercom mode with the backend.  |
+| `/api/settings/vpn/{value}` | Enable/disable/toggle the VPN client (`on`, `off`, `toggle`) |
 | `/api/settings/display/brightness/{value}` | Set backlight brightness (0–100%). `{value}` as integer percent |
 | `/api/settings/display/state/{value}` | Set display state (`on`, `off`, `toggle`) |
 | `/api/settings/display/page/{value}` | Change display page. `{value}` integer: 0=clock, 1=battery, 2=apps, 10=media player, etc. |
@@ -502,7 +512,9 @@ curl http://<ESP_IP>/api/settings/display/brightness/75
 | `sd_ready`                                                   | SD card ready status                |
 | `media_is_playing`                                           | Media playback active               |
 | `ssh`, `ssh_state`                                           | SSH server state                    |
+| `vpn`, `vpn_state`                                           | VPN client state   
 | `powerdown_timeout`, `sleep_timeout`                         | Deep‑sleep timeout (seconds)        |
+
 
 
 ### **Shell**
@@ -695,8 +707,26 @@ That is **2503** regex patterns and makes a total of **272684913** understandabl
 
 ## **Networking**
 
-*Sorry, not yet...*  
 
+**WiFi**  
+
+User may provide multiple SSID connections using environment variables through the `.env` file *(see .env.example)*.  
+If the connection to the first provided SSID fails it will automatically try the next one in the file.  
+If none of the pre-defined networks has a successful connection, a wireless network scan is performed and it will try to connect to any open network.  
+This should be safe since all network traffic are routed through the VPN task *(see below)*.  
+You will hear a "ding" sound, when a network connection has been established.  
+
+WiFi connection can be toggled on/off via the GUI from the settings page, and also lets the user scan for other availaable networks.  
+
+<br>
+
+**WireGuard™ VPN**  
+
+The watch runs a WireGuard™ client to ensure a secure connection to the users home network and that the `yo` backend is always available.  
+Just drop your WireGuard™ peer configuration file (most often generated by the server) in the project root as `.wg-client.conf`.   
+
+
+User can toggle the VPN on/off at any time from the settings page using the GUI.  
 
 <br>
 
@@ -876,7 +906,6 @@ All the embassy-executor tasks can also be started/paused from this application.
 
 **Qwackify** - a media player with play/pause & previous/next track buttons, title & progress bar.  
   
-**House** - Smart Home application with some quick action buttons etc, most of the home control is done by voice anyway.  
 
 **tinyWeather** - More of a widget than an app really. Displays the current temperature and an icon representing the weather state on the display. Tapping anywhere on the weather page will cycle between current weather and a three day forecast.  
   
