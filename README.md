@@ -73,7 +73,9 @@ Turn up volume & hit play.
 
 <br>
 
-[Play demo video of media player](https://github.com/user-attachments/assets/6880aa18-7a8a-437c-bca0-b99c03bb1682)
+
+[Play demo video of media player](https://github.com/user-attachments/assets/19572217-8631-4e67-9cca-f6afe24042c8)
+
 
 
 <br>
